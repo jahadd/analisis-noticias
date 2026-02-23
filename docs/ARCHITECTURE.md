@@ -187,16 +187,6 @@ Todas las consultas dependen del **filtro de fechas** (date range) que el usuari
 
 ---
 
-## 6. Integración con Nginx (opcional)
-
-Si el dashboard se sirve detrás de un proxy (p. ej. Nginx):
-
-- Añadir una location que haga proxy al proceso Shiny: ruta `/shiny/`, proxy pass `http://127.0.0.1:3838/`.
-- Incluir cabeceras: `Host`, `X-Real-IP`, `X-Forwarded-For`, `X-Forwarded-Proto`, y para WebSockets: `Upgrade`, `Connection`.
-- Shiny debe aceptar conexiones en `0.0.0.0:3838` si el proxy está en la misma máquina. Si la app genera enlaces internos, configurar la base URL para que coincida con `/shiny/`.
-
----
-
 ## 7. Resumen de archivos en el repositorio
 
 - `README.md` — entrada principal: requisitos, uso, comandos.
