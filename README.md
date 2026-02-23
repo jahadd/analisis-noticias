@@ -1,6 +1,7 @@
 # Análisis de noticias (Chile)
 
-Recolección de noticias de medios chilenos ([datamedios](https://cran.r-project.org/web/packages/datamedios/)), análisis de titulares (tokenización, frecuencias por fecha) y dashboard Shiny. Base de datos: PostgreSQL. Credenciales por variables de entorno (nunca en el código).
+Pipeline en R y PostgreSQL para **recolectar** noticias de medios chilenos (paquete [datamedios](https://cran.r-project.org/web/packages/datamedios/)) — BioBioChile, Emol y el resto de fuentes que expone el paquete —, **analizar** titulares (tokenización y frecuencias por fecha) y **visualizar** resultados en un dashboard Shiny. Incluye schema SQL replicable y documentación de uso. Las credenciales de base de datos se configuran por variables de entorno (nunca en el código).
+
 
 ## Estructura
 
