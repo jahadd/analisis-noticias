@@ -1,19 +1,40 @@
--- Esquema de tablas de agregados para el dashboard de noticias.
--- Fuente: solo titulares de la tabla noticias. Ejecutar en la base noticias_chile.
--- Uso: script R de análisis escribe aquí; Shiny solo lee.
+-- Schema completo de la base de datos noticias_chile.
+-- Permite replicar la base desde cero. Ejecutar en una base vacía como usuario noticias.
+-- Uso: psql -U noticias -d noticias_chile -h localhost -f schema.sql
+--
+-- Orden: 1) Crear BD y usuario (fuera de este script), 2) Ejecutar este schema, 3) Scraping y análisis.
 
 -- ---------------------------------------------------------------------------
--- 1. Índices en noticias (para que el script lea por fechas de forma eficiente)
+-- 1. Tabla principal: noticias (scraping con datamedios)
 -- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS noticias (
+    id              SERIAL PRIMARY KEY,
+    titulo           TEXT NOT NULL,
+    contenido        TEXT,
+    contenido_limpio  TEXT,
+    url              TEXT NOT NULL UNIQUE,
+    url_imagen       TEXT,
+    autor            TEXT,
+    fecha            DATE NOT NULL,
+    resumen          TEXT,
+    search_query     TEXT,
+    medio            TEXT,
+    created_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE INDEX IF NOT EXISTS idx_noticias_fecha ON noticias(fecha DESC);
 CREATE INDEX IF NOT EXISTS idx_noticias_fecha_id ON noticias(fecha, id);
+CREATE INDEX IF NOT EXISTS idx_noticias_url ON noticias(url);
+
+COMMENT ON TABLE noticias IS 'Noticias recolectadas con datamedios; url es única por ON CONFLICT en el scraping.';
 
 -- ---------------------------------------------------------------------------
--- 2. Tabla: términos por fecha (desde titulares)
+-- 2. Tabla: términos por fecha (desde titulares; script run_analisis_titulos.R)
 -- ---------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS titulos_terminos_diarios (
-    fecha DATE NOT NULL,
-    termino VARCHAR(150) NOT NULL,
+    fecha      DATE NOT NULL,
+    termino    VARCHAR(150) NOT NULL,
     frecuencia INTEGER NOT NULL,
     CONSTRAINT pk_titulos_terminos_diarios PRIMARY KEY (fecha, termino)
 );
@@ -28,7 +49,7 @@ COMMENT ON TABLE titulos_terminos_diarios IS 'Frecuencia de cada término por d�
 -- 3. Tabla: métricas diarias globales
 -- ---------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS metricas_titulos_diarias (
-    fecha DATE NOT NULL PRIMARY KEY,
+    fecha          DATE NOT NULL PRIMARY KEY,
     total_noticias INTEGER NOT NULL,
     terminos_unicos INTEGER NOT NULL,
     actualizado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP

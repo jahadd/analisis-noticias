@@ -7,7 +7,7 @@ Recolección de noticias de medios chilenos ([datamedios](https://cran.r-project
 ```
 ├── README.md
 ├── .env.example          # Copiar a .env y rellenar (no subir .env)
-├── schema_agregados.sql  # Crear tablas de agregados (una vez)
+├── schema.sql           # Schema completo de la BD (replicar desde cero)
 ├── vaciar_db.sql         # Vaciar tablas (opcional, para recarga total)
 ├── run_scraping_datamedios.R
 ├── run_analisis_titulos.R
@@ -20,7 +20,7 @@ Recolección de noticias de medios chilenos ([datamedios](https://cran.r-project
 ## Requisitos
 
 - **R**: paquetes `datamedios`, `DBI`, `RPostgres`, `lubridate` (scraping y análisis); `shiny`, `pool`, `ggplot2`, `dplyr` (dashboard).
-- **PostgreSQL**: base `noticias_chile`, usuario `noticias`, tabla `noticias` (creada por tu esquema o por datamedios). Tablas de agregados con `schema_agregados.sql`.
+- **PostgreSQL**: base `noticias_chile`, usuario `noticias`. Ejecutar `schema.sql` una vez para crear todas las tablas (noticias + agregados).
 
 Instalación R (si falta):
 
@@ -52,10 +52,12 @@ export PGDATABASE=noticias_chile
 
 Todo desde la **raíz del repositorio**.
 
-### 1. Crear tablas de agregados (una vez)
+### 1. Crear la base de datos (una vez)
+
+Crear la base `noticias_chile` y el usuario `noticias` en PostgreSQL (fuera de este repo). Luego aplicar el schema completo:
 
 ```bash
-psql -U noticias -d noticias_chile -h localhost -f schema_agregados.sql
+psql -U noticias -d noticias_chile -h localhost -f schema.sql
 ```
 
 (Con contraseña en variable: `export PGPASSWORD='...'` y usar `-h localhost` si aplica.)
