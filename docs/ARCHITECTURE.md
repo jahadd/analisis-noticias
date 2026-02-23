@@ -1,4 +1,4 @@
-# Plan detallado: capa de análisis y dashboard de noticias
+# Arquitectura: análisis y dashboard de noticias
 
 ## 1. Objetivos y criterios
 
@@ -28,12 +28,12 @@
         |
 [Dashboard R Shiny]  (puerto ej. 3838)
         ↑
-        | proxy
+        | proxy (opcional)
         |
 [Nginx: /shiny/ → localhost:3838]
         ↑
         |
-[Usuario: BabelOS iframe /shiny/]
+[Usuario / iframe /shiny/]
 ```
 
 ---
@@ -53,7 +53,7 @@ Almacena la frecuencia de cada término por día. Origen: columna `titulo` de `n
   - `frecuencia` INTEGER NOT NULL
 - **Restricción:** UNIQUE(fecha, termino)
 - **Índices:** (fecha DESC), (termino), (fecha, termino)
-- **Uso en dashboard:** top términos por período, evolución de términos clave, “términos en alza/baja” (comparando dos períodos).
+- **Uso en dashboard:** top términos por período, evolución de términos clave, "términos en alza/baja" (comparando dos períodos).
 
 ### 3.2 Tabla: métricas diarias globales (opcional pero útil)
 
@@ -80,35 +80,35 @@ Asegurar índices en `noticias` para que el script lea por rango de fechas de fo
 
 ### 4.1 Ubicación y entorno
 
-- **Carpeta:** `noticias/` (junto a este plan).
-- **Archivo principal:** p. ej. `run_analisis_titulos.R` o `analisis_titulos.R`.
+- **Carpeta:** raíz del repositorio.
+- **Archivo principal:** `run_analisis_titulos.R`.
 - **Dependencias R:** `DBI`, `RPostgres` (o `RPostgreSQL`), `stringi` o `stringr` para normalización. No usar paquetes de ML/NLP pesados para este paso.
 
 ### 4.2 Conexión a PostgreSQL
 
 - Leer credenciales desde variables de entorno: `PGUSER`, `PGPASSWORD`, `PGHOST` (default `localhost`), `PGPORT` (default `5432`), `PGDATABASE`.
-- Ejemplo de nombres: usuario `noticias`, base `noticias_chile`. No dejar contraseña en el script; usar `Sys.getenv("PGPASSWORD")` y documentar en un README o `.env.example`.
+- No dejar contraseña en el script; usar `Sys.getenv("PGPASSWORD")` y documentar en README o `.env.example`.
 
 ### 4.3 Lectura de datos
 
 - Consultar **solo** `titulo` y `fecha` de `noticias`.
-- Leer por **lotes** (p. ej. por rango de fechas o por bloques de `id`) para no cargar 60k filas en memoria de una vez. Por ejemplo: 10.000 filas por lote, o por año/mes.
-- Si el script corre incremental: guardar la última `fecha` (o último `id`) procesada y en la siguiente ejecución leer solo `WHERE fecha > última_fecha` (o `id > último_id`). Para la primera ejecución, procesar todo el histórico.
+- Leer por **lotes** (p. ej. por rango de fechas o por bloques de `id`) para no cargar 60k filas en memoria de una vez.
+- Si el script corre incremental: guardar la última `fecha` (o último `id`) procesada y en la siguiente ejecución leer solo `WHERE fecha > última_fecha`. Para la primera ejecución, procesar todo el histórico.
 
 ### 4.4 Tokenización simple
 
 - Por cada título: pasar a minúsculas (locale neutro o español).
-- Opcional: normalizar acentos (NFC o quitar acentos) para no duplicar “tema” y “téma”.
+- Opcional: normalizar acentos (NFC o quitar acentos).
 - Split por espacios y puntuación (regex: `[^a-z0-9ñáéíóúü]+` o equivalente).
-- Filtrar: longitud mínima (ej. 2 caracteres), lista fija de stopwords (archivo `stopwords_es.txt` o vector en el script: artículos, preposiciones, “que”, “los”, “las”, “del”, “una”, etc.).
+- Filtrar: longitud mínima (ej. 2 caracteres), lista fija de stopwords (archivo `stopwords_es.txt` o vector en el script).
 - No stemmear ni lematizar para mantener el pipeline simple y auditable.
 
 ### 4.5 Agregación y escritura
 
 - Para cada lote: construir un data.frame con columnas `fecha`, `termino`, `frecuencia` (conteo por (fecha, término) dentro del lote).
 - Acumular por (fecha, termino) si se procesan varios lotes (sumar frecuencias).
-- Al final (o por cada día procesado): **UPSERT** en `titulos_terminos_diarios` (INSERT ... ON CONFLICT (fecha, termino) DO UPDATE SET frecuencia = EXCLUDED.frecuencia o equivalente).
-- Calcular y escribir `metricas_titulos_diarias`: por cada fecha, `total_noticias` = COUNT(*), `terminos_unicos` = COUNT(DISTINCT termino) en el resultado del día; UPSERT por `fecha`.
+- Al final (o por cada día procesado): **UPSERT** en `titulos_terminos_diarios`.
+- Calcular y escribir `metricas_titulos_diarias`: por cada fecha, `total_noticias`, `terminos_unicos`; UPSERT por `fecha`.
 
 ### 4.6 Orden de ejecución recomendado
 
@@ -119,7 +119,7 @@ Asegurar índices en `noticias` para que el script lea por rango de fechas de fo
 5. Tokenizar y contar por (fecha, término).
 6. Escribir/actualizar `titulos_terminos_diarios` y `metricas_titulos_diarias`.
 7. Cerrar conexión.
-8. Log breve (ej. fechas procesadas, filas leídas, términos únicos escritos) a consola o archivo de log.
+8. Log breve a consola o archivo de log.
 
 ### 4.7 Programación (cron)
 
@@ -132,7 +132,7 @@ Asegurar índices en `noticias` para que el script lea por rango de fechas de fo
 
 ### 5.1 Objetivo de la interfaz
 
-- **Protagonista: etiquetas (términos).** La interfaz responde sobre todo: “¿Qué términos dominan en los titulares?”, “¿Cómo evoluciona cada término en el tiempo?” y “¿Cuál es el término más frecuente?”. El volumen de noticias es contexto secundario.
+- **Protagonista: etiquetas (términos).** La interfaz responde: "¿Qué términos dominan en los titulares?", "¿Cómo evoluciona cada término en el tiempo?" y "¿Cuál es el término más frecuente?". El volumen de noticias es contexto secundario.
 - Sin sobrecarga: prioridad visual a términos; volumen en tarjetas pequeñas o una línea.
 
 ### 5.2 Variables del dashboard (qué se muestra y de dónde sale)
@@ -144,7 +144,7 @@ Asegurar índices en `noticias` para que el script lea por rango de fechas de fo
 | **Alta** | Evolución de 2–4 términos en el tiempo | `titulos_terminos_diarios`: fecha, termino, frecuencia WHERE termino IN (...) AND fecha BETWEEN ? AND ? | Gráfico de líneas (principal) |
 | **Alta** | Top 10–15 términos del período | `titulos_terminos_diarios`: SUM(frecuencia) GROUP BY termino, ORDER BY SUM DESC LIMIT 15 | Gráfico de barras horizontales |
 | **Media** | Últimas noticias (título, fecha, medio, enlace) | `noticias`: titulo, fecha, medio, url WHERE fecha BETWEEN ? ORDER BY fecha DESC LIMIT 50 | Tabla de detalle |
-| **Media** | Términos en alza (opcional) | `titulos_terminos_diarios`: comparar dos períodos (ej. esta semana vs anterior) | Lista o mini-gráfico |
+| **Media** | Términos en alza (opcional) | `titulos_terminos_diarios`: comparar dos períodos | Lista o mini-gráfico |
 | **Baja** | Total noticias en el período | `metricas_titulos_diarias`: SUM(total_noticias) WHERE fecha BETWEEN ? AND ? | Tarjeta pequeña o texto |
 | **Baja** | Promedio noticias por día | `metricas_titulos_diarias`: suma / COUNT(días) en el rango | Tarjeta pequeña o texto |
 
@@ -164,75 +164,46 @@ Todas las consultas dependen del **filtro de fechas** (date range) que el usuari
 
 ### 5.5 Filtro de fechas
 
-- Un único control (date range input). Todas las consultas reciben ese rango. Presets (“Últimos 7 días”, “Último mes”, “Último trimestre”) y tope máximo (ej. 365 días).
+- Un único control (date range input). Todas las consultas reciben ese rango. Presets ("Últimos 7 días", "Último mes", "Último trimestre") y tope máximo (ej. 365 días).
 
 ### 5.6 Elementos de la UI (orden de protagonismo)
 
-- **Tarjetas principales (etiquetas):** términos distintos en el período; término más frecuente (nombre + número). Opcional: “términos en alza” (comparando dos períodos).
-- **Gráfico principal:** evolución de 2–4 términos en el tiempo (líneas; datos desde `titulos_terminos_diarios`). Selector de términos o lista fija.
-- **Segundo gráfico:** top 10–15 términos del período (barras horizontales; mismo origen).
+- **Tarjetas principales (etiquetas):** términos distintos en el período; término más frecuente (nombre + número). Opcional: "términos en alza".
+- **Gráfico principal:** evolución de 2–4 términos en el tiempo (líneas). Selector de términos o lista fija.
+- **Segundo gráfico:** top 10–15 términos del período (barras horizontales).
 - **Tabla:** últimas noticias (titulo, fecha, medio, enlace). Máximo 50 filas; paginación opcional.
-- **Tarjetas secundarias (volumen):** total noticias en el período y promedio por día, en tamaño reducido o una sola línea de contexto.
+- **Tarjetas secundarias (volumen):** total noticias en el período y promedio por día.
 
 ### 5.7 Estética y rendimiento
 
 - Tema coherente (ej. `bslib` o `shinythemes`), tipografía legible, colores sobrios.
 - Usar `bindCache()` donde aplique (p. ej. por rango de fechas) para no repetir consultas costosas.
-- Mensaje de “Cargando…” en los outputs que consultan la base.
+- Mensaje de "Cargando…" en los outputs que consultan la base.
 
 ### 5.8 Despliegue del proceso Shiny
 
 - En desarrollo: `shiny::runApp(port = 3838)`.
-- En producción: Shiny Server (open source o Pro) o un proceso systemd/supervisor que ejecute la app en el puerto 3838, con variables de entorno configuradas para la conexión a PostgreSQL.
+- En producción: Shiny Server (open source o Pro) o un proceso systemd/supervisor que ejecute la app en el puerto 3838, con variables de entorno configuradas.
 
 ---
 
-## 6. Integración con Nginx
+## 6. Integración con Nginx (opcional)
 
-### 6.1 Objetivo
+Si el dashboard se sirve detrás de un proxy (p. ej. Nginx):
 
-- Que el dashboard sea accesible como “una app más” dentro del sitio (BabelOS), en la misma origen, sin exponer el puerto 3838 al exterior.
-
-### 6.2 Configuración Nginx
-
-- En el mismo servidor donde corre Nginx (y Flask para BabelOS), añadir una location que haga proxy al proceso Shiny:
-  - Ruta: ej. `/shiny/`
-  - Proxy pass: `http://127.0.0.1:3838/`
-  - Incluir cabeceras habituales de proxy: `Host`, `X-Real-IP`, `X-Forwarded-For`, `X-Forwarded-Proto` (si hay HTTPS), y para WebSockets si Shiny los usa: `Upgrade`, `Connection`.
-- Recarga de Nginx tras cambiar la config.
-
-### 6.3 Shiny detrás del proxy
-
-- Shiny debe estar configurado para aceptar conexiones en `127.0.0.1:3838` (o `0.0.0.0:3838` si el proxy está en la misma máquina). Si la app genera enlaces internos, puede ser necesario configurar la base URL (ej. en Shiny Server o con opciones de `runApp`) para que coincida con `/shiny/`.
-
-### 6.4 BabelOS (Flask)
-
-- Añadir una “app” (ventana) en el escritorio cuyo contenido sea un iframe con `src="/shiny/"`. No es necesario crear documentos nuevos en este plan; es el paso ya discutido de integración.
+- Añadir una location que haga proxy al proceso Shiny: ruta `/shiny/`, proxy pass `http://127.0.0.1:3838/`.
+- Incluir cabeceras: `Host`, `X-Real-IP`, `X-Forwarded-For`, `X-Forwarded-Proto`, y para WebSockets: `Upgrade`, `Connection`.
+- Shiny debe aceptar conexiones en `0.0.0.0:3838` si el proxy está en la misma máquina. Si la app genera enlaces internos, configurar la base URL para que coincida con `/shiny/`.
 
 ---
 
-## 7. Orden de implementación sugerido
+## 7. Resumen de archivos en el repositorio
 
-1. **Carpeta y plan** (este documento) — hecho.
-2. **SQL:** script de creación de tablas `titulos_terminos_diarios` y `metricas_titulos_diarias` (y comprobación de índices en `noticias`). Ejecutar en `noticias_chile`.
-3. **R – Script de análisis:** conexión, lectura por lotes, tokenización, escritura en tablas. Probar con un subconjunto pequeño de fechas.
-4. **Ejecución completa** del script sobre todo el histórico (o el rango deseado) y verificación de datos en las tablas.
-5. **Cron o scheduler** para ejecutar el script periódicamente.
-6. **Dashboard Shiny:** estructura de la app, conexión con pool, consultas descritas arriba, UI (KPIs, gráficos, tabla, filtro de fechas). Probar en local (puerto 3838).
-7. **Despliegue de Shiny** en el servidor (Shiny Server o proceso equivalente) con variables de entorno.
-8. **Nginx:** añadir location `/shiny/` y recargar.
-9. **BabelOS:** añadir ventana con iframe a `/shiny/`.
-10. **Documentación operativa:** cómo actualizar credenciales, cómo re-ejecutar el análisis, cómo reiniciar Shiny y Nginx.
-
----
-
-## 8. Resumen de archivos en `noticias/`
-
-- `PLAN_DETALLADO.md` — este plan.
-- `run_analisis_titulos.R` (o nombre acordado) — script de análisis que lee `noticias`, tokeniza titulares y escribe en las tablas de agregados.
-- `schema_agregados.sql` (opcional) — DDL de `titulos_terminos_diarios` y `metricas_titulos_diarias` para ejecutar una sola vez.
-- `stopwords_es.txt` (opcional) — lista de stopwords si se externaliza.
-- Carpeta `dashboard/` o archivo `app.R` — aplicación Shiny.
-- `.env.example` — ejemplo de variables (PGUSER, PGPASSWORD, PGDATABASE, PGHOST, PGPORT) sin valores reales; indicar que se copie a `.env` y no se suba al repo.
-
-Con esto, la capa de análisis queda definida, pre-cargada y lista para un dashboard profesional y eficiente, con integración clara a Nginx y BabelOS.
+- `README.md` — entrada principal: requisitos, uso, comandos.
+- `docs/ARCHITECTURE.md` — esta documentación de diseño.
+- `run_analisis_titulos.R` — script de análisis que lee `noticias`, tokeniza titulares y escribe en las tablas de agregados.
+- `run_scraping_datamedios.R` — scrapeo con datamedios hacia PostgreSQL.
+- `schema_agregados.sql` — DDL de `titulos_terminos_diarios` y `metricas_titulos_diarias` (y índices en `noticias`).
+- `vaciar_db.sql` — vacía tablas para recarga completa.
+- `dashboard/app.R` — aplicación Shiny.
+- `.env.example` — plantilla de variables de entorno (copiar a `.env`, no subir `.env`).
