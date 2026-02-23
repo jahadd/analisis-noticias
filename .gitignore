@@ -1,0 +1,36 @@
+# Credenciales y configuración local (nunca subir)
+.env
+*.env.local
+config.local.*
+
+# R: objetos y sesión
+.RData
+.Rhistory
+.Rapp.history
+*.Rproj.user/
+*.Rproj
+.Ruserdata/
+
+# R: paquetes instalados en el proyecto (si usas renv)
+renv/library/
+
+# Archivos generados o temporales
+*.rds
+*.rda
+*.log
+*.tmp
+*~
+
+# Base de datos: dumps y copias (los scripts .sql del repo sí se versionan)
+*.dump
+*.backup
+*.sql.backup
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
+
+# IDE / editores
+.idea/
+*.swp
+*.swo
