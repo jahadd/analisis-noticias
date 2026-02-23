@@ -187,7 +187,7 @@ Todas las consultas dependen del **filtro de fechas** (date range) que el usuari
 
 ---
 
-## 7. Resumen de archivos en el repositorio
+## 6. Resumen de archivos en el repositorio
 
 - `README.md` — entrada principal: requisitos, uso, comandos.
 - `docs/ARCHITECTURE.md` — esta documentación de diseño.
