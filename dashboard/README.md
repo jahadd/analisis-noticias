@@ -1,6 +1,6 @@
 # Dashboard Shiny
 
-Aplicación Shiny que consulta las tablas de agregados y `noticias` (solo lectura). Requiere las mismas variables de entorno que el resto del proyecto (`PGUSER`, `PGPASSWORD`, `PGHOST`, `PGPORT`, `PGDATABASE`).
+Aplicación Shiny que consulta las tablas de agregados y `noticias` (solo lectura). Requiere las mismas variables de entorno que el resto del proyecto (`PGUSER`, `PGPASSWORD`, `PGHOST`, `PGPORT`, `PGDATABASE`). Dependencias R: `shiny`, `plotly`, `pool`, `DBI`, `RPostgres`, `ggplot2`, `dplyr`.
 
 **Ejecutar desde la raíz del repositorio:**
 

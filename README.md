@@ -6,7 +6,7 @@ Pipeline en R y PostgreSQL para **recolectar** noticias de medios chilenos (paqu
 ```
 ├── README.md
 ├── .env.example          # Copiar a .env y rellenar (no subir .env)
-├── schema.sql           # Schema completo de la BD (replicar desde cero)
+├── schema.sql            # Schema completo de la BD (replicar desde cero)
 ├── vaciar_db.sql         # Vaciar tablas (opcional, para recarga total)
 ├── run_scraping_datamedios.R
 ├── run_analisis_titulos.R
@@ -18,13 +18,13 @@ Pipeline en R y PostgreSQL para **recolectar** noticias de medios chilenos (paqu
 
 ## Requisitos
 
-- **R**: paquetes `datamedios`, `DBI`, `RPostgres`, `lubridate` (scraping y análisis); `shiny`, `pool`, `ggplot2`, `dplyr` (dashboard).
+- **R**: paquetes `datamedios`, `DBI`, `RPostgres`, `lubridate` (scraping y análisis); `shiny`, `pool`, `ggplot2`, `dplyr`, `plotly` (dashboard).
 - **PostgreSQL**: base `noticias_chile`, usuario `noticias`. Ejecutar `schema.sql` una vez para crear todas las tablas (noticias + agregados).
 
 Instalación R (si falta):
 
 ```r
-install.packages(c("datamedios", "DBI", "RPostgres", "lubridate", "shiny", "pool", "ggplot2", "dplyr"))
+install.packages(c("datamedios", "DBI", "RPostgres", "lubridate", "shiny", "pool", "ggplot2", "dplyr", "plotly"))
 ```
 
 ## Configuración
@@ -88,6 +88,8 @@ Rscript -e "shiny::runApp('dashboard', port = 3838, host = '0.0.0.0')"
 ```
 
 Abrir en el navegador: **http://localhost:3838**
+
+El dashboard incluye: pestaña **Conceptos** (evolución de términos en el tiempo, top 30 términos, buscador de frecuencia por término, últimas noticias con búsqueda y paginación) y pestaña **Volumen de noticias** (gráfico de área apilada por medio, distribución por medio). Los gráficos de términos excluyen la misma lista de stopwords que el análisis (`run_analisis_titulos.R`). Los datos se recargan desde la BD en cada consulta (sin caché) para reflejar las actualizaciones del pipeline.
 
 ## Documentación adicional
 

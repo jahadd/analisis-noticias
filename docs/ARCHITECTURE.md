@@ -135,52 +135,61 @@ Asegurar índices en `noticias` para que el script lea por rango de fechas de fo
 - **Protagonista: etiquetas (términos).** La interfaz responde: "¿Qué términos dominan en los titulares?", "¿Cómo evoluciona cada término en el tiempo?" y "¿Cuál es el término más frecuente?". El volumen de noticias es contexto secundario.
 - Sin sobrecarga: prioridad visual a términos; volumen en tarjetas pequeñas o una línea.
 
-### 5.2 Variables del dashboard (qué se muestra y de dónde sale)
+### 5.2 Estructura del dashboard (dos pestañas)
+
+- **Conceptos:** tarjetas (términos distintos, término más frecuente), texto de volumen, gráfico de evolución de términos en el tiempo (selector top 10), gráfico top 30 términos, buscador de frecuencia por término (muestra todas las coincidencias con ILIKE), últimas noticias con búsqueda en titulares y paginación (5 por página).
+- **Volumen de noticias:** gráfico de área apilada por medio (volumen por día/ano por medio + línea total), gráfico de distribución por medio (barras).
+
+En los gráficos y tarjetas de términos se aplica el **mismo filtro de stopwords** que en `run_analisis_titulos.R` (artículos, preposiciones, “primer”, “así”, etc.), de modo que no aparezcan en evolución ni en top 30. El buscador de términos no filtra: muestra cualquier coincidencia para consultar frecuencias.
+
+### 5.3 Variables del dashboard (qué se muestra y de dónde sale)
 
 | Prioridad | Variable / concepto | Origen en BD | Uso en UI |
 |-----------|---------------------|--------------|-----------|
-| **Alta** | Términos distintos en el período | `titulos_terminos_diarios`: COUNT(DISTINCT termino) WHERE fecha BETWEEN ? AND ? | Tarjeta principal |
-| **Alta** | Término más frecuente del período (nombre + frecuencia) | `titulos_terminos_diarios`: SUM(frecuencia) GROUP BY termino, tomar top 1 | Tarjeta principal |
-| **Alta** | Evolución de 2–4 términos en el tiempo | `titulos_terminos_diarios`: fecha, termino, frecuencia WHERE termino IN (...) AND fecha BETWEEN ? AND ? | Gráfico de líneas (principal) |
-| **Alta** | Top 10–15 términos del período | `titulos_terminos_diarios`: SUM(frecuencia) GROUP BY termino, ORDER BY SUM DESC LIMIT 15 | Gráfico de barras horizontales |
-| **Media** | Últimas noticias (título, fecha, medio, enlace) | `noticias`: titulo, fecha, medio, url WHERE fecha BETWEEN ? ORDER BY fecha DESC LIMIT 50 | Tabla de detalle |
-| **Media** | Términos en alza (opcional) | `titulos_terminos_diarios`: comparar dos períodos | Lista o mini-gráfico |
-| **Baja** | Total noticias en el período | `metricas_titulos_diarias`: SUM(total_noticias) WHERE fecha BETWEEN ? AND ? | Tarjeta pequeña o texto |
-| **Baja** | Promedio noticias por día | `metricas_titulos_diarias`: suma / COUNT(días) en el rango | Tarjeta pequeña o texto |
+| **Alta** | Términos distintos en el período | `titulos_terminos_diarios`: COUNT(DISTINCT termino) WHERE fecha BETWEEN ? AND ? AND termino NOT IN (stopwords) | Tarjeta |
+| **Alta** | Término más frecuente del período | `titulos_terminos_diarios`: SUM(frecuencia) GROUP BY termino, excl. stopwords, top 1 | Tarjeta |
+| **Alta** | Evolución de términos en el tiempo | `titulos_terminos_diarios`: fecha, termino, frecuencia WHERE termino IN (seleccionados) AND fecha BETWEEN ? AND ? | Gráfico de líneas (plot_ly); eje X según rango: ≤7d día a día, ≤31d cada 2 días, ≤2a mensual, >2a anual |
+| **Alta** | Top 30 términos del período | `titulos_terminos_diarios`: SUM(frecuencia) GROUP BY termino, excl. stopwords, LIMIT 30 | Gráfico de barras |
+| **Alta** | Buscador de frecuencia por término | `titulos_terminos_diarios`: termino, SUM(frecuencia) WHERE termino ILIKE ? AND fecha BETWEEN ? AND ? (sin filtrar stopwords) | Lista término (N) |
+| **Media** | Últimas noticias (titular, fecha, medio, enlace) | `noticias`: titulo, fecha, medio, url WHERE fecha BETWEEN ? [y titulo ILIKE ?], paginación 5 por página | Tabla |
+| **Media** | Volumen por día y por medio | `noticias`: fecha, medio, COUNT(*) WHERE fecha BETWEEN ? AND ? GROUP BY fecha, medio | Gráfico de área apilada + línea total |
+| **Baja** | Total y promedio noticias en el período | `metricas_titulos_diarias`: SUM(total_noticias), COUNT(*) WHERE fecha BETWEEN ? AND ? | Texto bajo tarjetas |
+| **Baja** | Distribución por medio | `noticias`: medio, COUNT(*) WHERE fecha BETWEEN ? AND ? GROUP BY medio | Gráfico de barras (pestaña Volumen) |
 
-Todas las consultas dependen del **filtro de fechas** (date range) que el usuario elija.
+Todas las consultas dependen del **filtro de fechas** (date range). No se usa caché (`bindCache`): cada recarga o cambio de rango vuelve a consultar la BD para reflejar las actualizaciones del pipeline.
 
-### 5.3 Conexión a la base
+### 5.4 Conexión a la base
 
 - Usar `pool` + `DBI` + `RPostgres` para conexión eficiente. Crear el pool al arrancar la app (una vez por proceso).
 - Credenciales desde variables de entorno (mismo esquema que el script de análisis).
 
-### 5.4 Fuentes de datos (solo lectura)
+### 5.5 Fuentes de datos (solo lectura)
 
-- **Tarjetas de términos:** `titulos_terminos_diarios` con `WHERE fecha BETWEEN ? AND ?` para COUNT(DISTINCT termino), y para SUM(frecuencia) GROUP BY termino (término más frecuente, top 15).
-- **Evolución temporal:** `titulos_terminos_diarios` con `WHERE termino IN (...) AND fecha BETWEEN ? AND ?`, ordenado por fecha.
-- **Volumen (secundario):** `metricas_titulos_diarias` con `WHERE fecha BETWEEN ? AND ?` para SUM(total_noticias) y promedio.
-- **Tabla de detalle:** `noticias` con `SELECT id, titulo, fecha, medio, url WHERE fecha BETWEEN ? AND ? ORDER BY fecha DESC LIMIT 50`.
+- **Tarjetas de términos:** `titulos_terminos_diarios` con `WHERE fecha BETWEEN ? AND ? AND termino NOT IN (stopwords)` para COUNT(DISTINCT termino) y para SUM(frecuencia) GROUP BY termino (término más frecuente, top 10, top 30).
+- **Evolución temporal:** `titulos_terminos_diarios` con `WHERE termino IN (seleccionados) AND fecha BETWEEN ? AND ?`, ordenado por fecha.
+- **Buscador de términos:** `titulos_terminos_diarios` con `WHERE termino ILIKE ? AND fecha BETWEEN ? AND ?`, GROUP BY termino (sin filtrar stopwords).
+- **Volumen (secundario):** `metricas_titulos_diarias` para total y promedio; `noticias` con GROUP BY fecha, medio para el gráfico de área apilada por medio.
+- **Tabla de detalle:** `noticias` con titulo, fecha, medio, url, filtro opcional por titular (ILIKE), paginación 5 por página.
 
-### 5.5 Filtro de fechas
+### 5.6 Filtro de fechas
 
 - Un único control (date range input). Todas las consultas reciben ese rango. Presets ("Últimos 7 días", "Último mes", "Último trimestre") y tope máximo (ej. 365 días).
 
-### 5.6 Elementos de la UI (orden de protagonismo)
+### 5.7 Elementos de la UI (orden de protagonismo)
 
-- **Tarjetas principales (etiquetas):** términos distintos en el período; término más frecuente (nombre + número). Opcional: "términos en alza".
-- **Gráfico principal:** evolución de 2–4 términos en el tiempo (líneas). Selector de términos o lista fija.
-- **Segundo gráfico:** top 10–15 términos del período (barras horizontales).
-- **Tabla:** últimas noticias (titulo, fecha, medio, enlace). Máximo 50 filas; paginación opcional.
-- **Tarjetas secundarias (volumen):** total noticias en el período y promedio por día.
+- **Tarjetas:** términos distintos en el período; término más frecuente (nombre + número).
+- **Gráfico de evolución:** líneas por término en el tiempo (selector entre top 10). Eje X adaptado: ≤7 días un tick por día, ≤31 días cada 2 días, >31 días mensual, >2 años anual.
+- **Gráfico top 30:** barras horizontales de términos del período (excl. stopwords).
+- **Buscador de términos:** campo de texto; lista de coincidencias con frecuencia (término (N)); sin filtrar stopwords.
+- **Tabla últimas noticias:** titulo, fecha, medio, enlace; búsqueda por titular; paginación 5 por página.
+- **Pestaña Volumen:** gráfico de área apilada por medio (y línea total); gráfico de distribución por medio.
 
-### 5.7 Estética y rendimiento
+### 5.8 Estética y rendimiento
 
-- Tema coherente (ej. `bslib` o `shinythemes`), tipografía legible, colores sobrios.
-- Usar `bindCache()` donde aplique (p. ej. por rango de fechas) para no repetir consultas costosas.
-- Mensaje de "Cargando…" en los outputs que consultan la base.
+- Tema coherente, tipografía legible, colores sobrios (azul primario, tarjetas y bordes discretos).
+- Gráficos con **plotly** (tooltips, leyenda, ejes adaptados al rango de fechas). Sin caché: las consultas se ejecutan en cada recarga o cambio de filtro para mostrar siempre datos actualizados tras el pipeline.
 
-### 5.8 Despliegue del proceso Shiny
+### 5.9 Despliegue del proceso Shiny
 
 - En desarrollo: `shiny::runApp(port = 3838)`.
 - En producción: Shiny Server (open source o Pro) o un proceso systemd/supervisor que ejecute la app en el puerto 3838, con variables de entorno configuradas.
@@ -192,7 +201,7 @@ Todas las consultas dependen del **filtro de fechas** (date range) que el usuari
 - `README.md` — entrada principal: requisitos, uso, comandos.
 - `docs/ARCHITECTURE.md` — esta documentación de diseño.
 - `run_analisis_titulos.R` — script de análisis que lee `noticias`, tokeniza titulares y escribe en las tablas de agregados.
-- `run_scraping_datamedios.R` — scrapeo con datamedios hacia PostgreSQL (año a año 2015–2026; dedup por URL, ON CONFLICT DO UPDATE).
+- `run_scraping_datamedios.R` — scrapeo con datamedios hacia PostgreSQL (año a año 2015–2026; dedup por URL, ON CONFLICT DO UPDATE). Con argumento `hoy`: solo noticias del día (para uso desde la página/cron).
 - `schema.sql` — schema completo de la BD: tabla `noticias`, tablas de agregados e índices (para replicar desde cero).
 - `vaciar_db.sql` — vacía tablas para recarga completa.
 - `dashboard/app.R` — aplicación Shiny.

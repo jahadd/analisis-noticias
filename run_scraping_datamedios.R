@@ -13,6 +13,8 @@
 #   1. Vaciar BD: psql -U noticias -d noticias_chile -f vaciar_db.sql
 #   2. Ejecutar: Rscript run_scraping_datamedios.R
 #   3. Análisis: Rscript run_analisis_titulos.R
+#
+# Actualización diaria (solo noticias del día): Rscript run_scraping_datamedios.R hoy
 # ------------------------------------------------------------------------------
 
 suppressPackageStartupMessages({
@@ -33,9 +35,18 @@ PGDATABASE <- Sys.getenv("PGDATABASE", "noticias_chile")
 
 if (!nzchar(PGPASSWORD)) stop("Definir PGPASSWORD (ej. export PGPASSWORD='...')")
 
-# Rango: todos los meses desde 2015-01 hasta 2026-12
-FECHA_INICIO <- as.Date("2015-01-01")
-FECHA_FIN    <- as.Date("2026-12-31")
+# Modo "solo hoy": primer argumento "hoy" (para actualización diaria automatizada)
+args <- commandArgs(trailingOnly = TRUE)
+SOLO_HOY <- length(args) > 0L && identical(args[1], "hoy")
+
+if (SOLO_HOY) {
+  FECHA_INICIO <- Sys.Date()
+  FECHA_FIN    <- Sys.Date()
+  message("Modo actualización diaria: solo noticias del día ", format(FECHA_INICIO, "%Y-%m-%d"))
+} else {
+  FECHA_INICIO <- as.Date("2015-01-01")
+  FECHA_FIN    <- as.Date("2026-12-31")
+}
 
 # Frases de búsqueda: cada una hace una llamada por mes. Menos queries = proceso más rápido.
 # Las que suelen devolver 0 en muchos meses (economia, sociedad, tecnologia, pais, region,
@@ -172,8 +183,13 @@ errores_periodos <- character(0)
 
 for (j in seq_along(anios)) {
   y <- anios[j]
-  f_ini <- format(as.Date(paste0(y, "-01-01")), "%Y-%m-%d")
-  f_fin <- format(as.Date(paste0(y, "-12-31")), "%Y-%m-%d")
+  if (SOLO_HOY) {
+    f_ini <- format(FECHA_INICIO, "%Y-%m-%d")
+    f_fin <- format(FECHA_FIN, "%Y-%m-%d")
+  } else {
+    f_ini <- format(as.Date(paste0(y, "-01-01")), "%Y-%m-%d")
+    f_fin <- format(as.Date(paste0(y, "-12-31")), "%Y-%m-%d")
+  }
 
   message("[", j, "/", total_anios, "] ", f_ini, " a ", f_fin)
 

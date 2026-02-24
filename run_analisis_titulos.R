@@ -5,11 +5,13 @@
 # titulos_terminos_diarios y metricas_titulos_diarias.
 # Ejecutar: Rscript run_analisis_titulos.R
 # Variables de entorno: PGUSER, PGPASSWORD, PGHOST, PGPORT, PGDATABASE
+# Opcional: install.packages("stringi") para normalizar Unicode (recomendado para bío-bío, colo-colo).
 # ------------------------------------------------------------------------------
 
 suppressPackageStartupMessages({
   library(DBI)
   library(RPostgres)
+  if (requireNamespace("stringi", quietly = TRUE)) library(stringi)
 })
 
 # ------------------------------------------------------------------------------
@@ -43,11 +45,15 @@ STOPWORDS <- c(
   "según", "contra", "mediante", "excepto", "hacia",
   "no", "ni", "nos", "nosotros", "ante", "bajo", "tras",
   "años", "año", "mes", "meses", "día", "días", "hora", "horas",
+  "mil", "nuevo", "nueva", "nuevos", "nuevas", "dos", "tres", "uno",
+  "cuatro", "cinco", "seis", "siete", "ocho", "nueve", "diez", "ciento", "cientos",
+  "primera", "primero", "primer", "segunda", "segundo", "tercera", "tercero", "cuarta", "quinto",
   "otro", "otra", "otros", "otras", "mismo", "misma", "mismos", "mismas",
   "todo", "toda", "todos", "todas", "algo", "alguno", "alguna", "algunos", "algunas",
   "cada", "cual", "cuales", "cualquier", "cualesquiera",
   "puede", "pueden", "poder", "debe", "deben", "deber",
   "sido", "estado", "será", "serán", "había", "habían", "habrá", "habrán",
+  "revisa", "cable", "aquí", "tiene", "pide",
   "quot", "amp", "lt", "gt", "nbsp", "mdash", "ndash", "rsquo", "lsquo", "hellip"
 )
 
@@ -63,6 +69,9 @@ con <- dbConnect(
   dbname   = PGDATABASE
 )
 on.exit(dbDisconnect(con), add = TRUE)
+
+if (!requireNamespace("stringi", quietly = TRUE))
+  message("Recomendado: install.packages(\"stringi\") para que compuestos como bío-bío se detecten bien (normalización Unicode).")
 
 message("Conectado a ", PGDATABASE, " en ", PGHOST)
 
@@ -89,22 +98,95 @@ message("Tablas de agregados vaciadas; recalculando con filtros actuales.")
 # ------------------------------------------------------------------------------
 # Tokenización: limpiar HTML/entidades, minúsculas, split, filtrar ruido y números
 # ------------------------------------------------------------------------------
+# Guiones tipográficos Unicode que se normalizan a guión ASCII (en-dash U+2013, em-dash U+2014, etc.)
+# En R el escape \u2013 puede fallar según encoding del archivo; se cubren con intToUtf8 por compatibilidad
+DASHES_UNICODE <- paste0(
+  "[",
+  intToUtf8(0x2010), intToUtf8(0x2011), intToUtf8(0x2012),
+  intToUtf8(0x2013), intToUtf8(0x2014), intToUtf8(0x2015),
+  "]"
+)
+
+# Compuestos conocidos: cuando aparecen dos palabras consecutivas (con o sin guión en la fuente),
+# se emiten como un solo término con la forma en que aparece en las noticias (espacio, mayúscula).
+# Valor = lista de pares (c(palabra1, palabra2)); si el par consecutivo coincide con alguno, se emite el nombre.
+COMPUESTOS_CONOCIDOS <- list(
+  "Colo Colo" = list(c("colo", "colo")),
+  "Bío Bío"   = list(
+    c("bío", "bío"), c("bio", "bio"), c("bio", "bío"), c("bío", "bio")
+  )
+)
+
+# Unir bigramas que forman un compuesto conocido (devuelve vector de tokens)
+fusionar_compuestos_conocidos <- function(tokens, compuestos) {
+  if (length(tokens) < 2L) return(tokens)
+  out <- character(0)
+  i <- 1L
+  while (i <= length(tokens)) {
+    fused <- FALSE
+    if (i < length(tokens)) {
+      par <- c(tokens[i], tokens[i + 1L])
+      if (requireNamespace("stringi", quietly = TRUE))
+        par <- stringi::stri_trans_nfc(par)
+      for (nom in names(compuestos)) {
+        pares <- compuestos[[nom]]
+        for (p in pares) {
+          if (identical(p, par)) {
+            out <- c(out, nom)
+            i <- i + 2L
+            fused <- TRUE
+            break
+          }
+        }
+        if (fused) break
+      }
+    }
+    if (!fused) {
+      out <- c(out, tokens[i])
+      i <- i + 1L
+    }
+  }
+  out
+}
+
 tokenizar_titulo <- function(titulo, stopwords, min_len = 3L) {
   if (is.na(titulo) || !nzchar(trimws(titulo))) return(character(0))
   txt <- tolower(trimws(titulo))
+  # Normalizar Unicode a NFC para que "bío" (y fusión bío-bío) coincida aunque la BD devuelva NFD (i + acento)
+  if (requireNamespace("stringi", quietly = TRUE))
+    txt <- stringi::stri_trans_nfc(txt)
+  # Normalizar guiones tipográficos a guión ASCII para preservar compuestos escritos con en-dash/em-dash
+  txt <- gsub(DASHES_UNICODE, "-", txt)
   # Quitar entidades HTML (ej. &quot; &amp;) para no dejar "quot", "amp" como términos
   txt <- gsub("&[a-z0-9]+;", " ", txt)
   txt <- gsub("&#[0-9]+;", " ", txt)
   # Quitar comillas y fragmentos que dejan "quot" en el texto crudo
   txt <- gsub("[\"']", " ", txt)
-  # Quitar puntuación; mantener letras (ñ, acentos) y números para luego filtrar solo-números
-  txt <- gsub("[^a-z0-9ñáéíóúü\\s]", " ", txt)
+  # Quitar puntuación; mantener letras (ñ, acentos), números y guión (para palabras compuestas tipo "colo-colo")
+  txt <- gsub("[^a-z0-9ñáéíóúü\\s-]", " ", txt)
   txt <- gsub("\\s+", " ", txt)
   tokens <- strsplit(txt, " ", fixed = FALSE)[[1]]
   tokens <- tokens[nzchar(tokens)]
   tokens <- tokens[nchar(tokens) >= min_len]
   # Excluir tokens que son solo números (ej. "36", "2024")
   tokens <- tokens[grepl("[a-zñáéíóúü]", tokens, ignore.case = TRUE)]
+  # Fusionar bigramas conocidos (ej. "colo" + "colo" -> "Colo Colo") cuando la fuente escribe con espacio
+  tokens <- fusionar_compuestos_conocidos(tokens, COMPUESTOS_CONOCIDOS)
+  # Unificar forma con guión a la forma de noticias (espacio): colo-colo -> Colo Colo, bío-bío -> Bío Bío
+  tokens[tokens == "colo-colo"] <- "Colo Colo"
+  tokens[tokens == "bío-bío"]   <- "Bío Bío"
+  # Palabras compuestas con guión: conservar si es un compuesto conocido (Bío Bío, Colo Colo) o si tienen forma palabra-palabra
+  compuestos_ok <- vapply(tokens, function(t) {
+    if (!grepl("-", t, fixed = TRUE)) return(TRUE)
+    if (t %in% names(COMPUESTOS_CONOCIDOS)) return(TRUE)
+    partes <- strsplit(t, "-", fixed = TRUE)[[1]]
+    if (length(partes) != 2L) return(FALSE)
+    nchar(partes[1L]) >= min_len &&
+      nchar(partes[2L]) >= min_len &&
+      grepl("^[a-zñáéíóúü]+$", partes[1L]) &&
+      grepl("^[a-zñáéíóúü]+$", partes[2L])
+  }, logical(1))
+  tokens <- tokens[compuestos_ok]
   tokens <- tokens[!tokens %in% stopwords]
   tokens
 }
@@ -160,6 +242,9 @@ while (fecha_actual <= max_fecha) {
     length
   )
   df_agg$fecha <- as.Date(df_agg$fecha)
+  # Respetar límite de la tabla (termino VARCHAR(150)); descartar términos más largos para evitar error en INSERT
+  max_len_termino <- 150L
+  df_agg <- df_agg[nchar(as.character(df_agg$termino)) <= max_len_termino, ]
 
   # UPSERT titulos_terminos_diarios (por lotes de 500)
   BATCH <- 500L
