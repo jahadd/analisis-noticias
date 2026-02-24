@@ -192,7 +192,7 @@ Todas las consultas dependen del **filtro de fechas** (date range) que el usuari
 - `README.md` — entrada principal: requisitos, uso, comandos.
 - `docs/ARCHITECTURE.md` — esta documentación de diseño.
 - `run_analisis_titulos.R` — script de análisis que lee `noticias`, tokeniza titulares y escribe en las tablas de agregados.
-- `run_scraping_datamedios.R` — scrapeo con datamedios hacia PostgreSQL.
+- `run_scraping_datamedios.R` — scrapeo con datamedios hacia PostgreSQL (año a año 2015–2026; dedup por URL, ON CONFLICT DO UPDATE).
 - `schema.sql` — schema completo de la BD: tabla `noticias`, tablas de agregados e índices (para replicar desde cero).
 - `vaciar_db.sql` — vacía tablas para recarga completa.
 - `dashboard/app.R` — aplicación Shiny.

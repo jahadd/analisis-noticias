@@ -1,8 +1,9 @@
 #!/usr/bin/env Rscript
 # ------------------------------------------------------------------------------
 # run_scraping_datamedios.R
-# Scrapeo de noticias chilenas con el paquete datamedios: todos los meses,
-# desde 2015 hasta 2026, todas las fuentes ("todas").
+# Scrapeo de noticias chilenas con el paquete datamedios: año a año
+# (menos llamadas que mes a mes y suele traer más resultados por límite de API).
+# Rango: 2015 hasta 2026, todas las fuentes ("todas").
 # Inserta en PostgreSQL (tabla noticias). No sube a la BD interna del paquete.
 #
 # Requisitos: install.packages(c("datamedios", "DBI", "RPostgres", "lubridate"))
@@ -157,29 +158,26 @@ insertar_noticias <- function(con, df) {
 }
 
 # ------------------------------------------------------------------------------
-# Generar primeros y últimos días de cada mes en el rango
+# Generar rango año a año (menos llamadas y mejor cobertura que mes a mes)
 # ------------------------------------------------------------------------------
-meses <- seq(from = floor_date(FECHA_INICIO, "month"),
-             to   = floor_date(FECHA_FIN, "month"),
-             by   = "month")
-total_meses <- length(meses)
-message("Rango: ", FECHA_INICIO, " a ", FECHA_FIN, " (", total_meses, " meses)")
+anios <- seq(from = year(FECHA_INICIO), to = year(FECHA_FIN))
+total_anios <- length(anios)
+message("Rango: ", FECHA_INICIO, " a ", FECHA_FIN, " (", total_anios, " años)")
 message("Fuentes: ", FUENTES)
 message("Queries (", length(SEARCH_QUERIES), "): ", paste(SEARCH_QUERIES, collapse = ", "))
 message("")
 
 total_insercciones <- 0L
-errores_meses <- character(0)
+errores_periodos <- character(0)
 
-for (j in seq_along(meses)) {
-  mes_start <- meses[j]
-  mes_end   <- ceiling_date(mes_start, "month") - 1L
-  f_ini     <- format(mes_start, "%Y-%m-%d")
-  f_fin     <- format(mes_end, "%Y-%m-%d")
+for (j in seq_along(anios)) {
+  y <- anios[j]
+  f_ini <- format(as.Date(paste0(y, "-01-01")), "%Y-%m-%d")
+  f_fin <- format(as.Date(paste0(y, "-12-31")), "%Y-%m-%d")
 
-  message("[", j, "/", total_meses, "] ", f_ini, " a ", f_fin)
+  message("[", j, "/", total_anios, "] ", f_ini, " a ", f_fin)
 
-  listas_mes <- list()
+  listas_anio <- list()
   for (sq in SEARCH_QUERIES) {
     out_df <- tryCatch({
       suppressWarnings({
@@ -204,29 +202,29 @@ for (j in seq_along(meses)) {
       NULL
     })
     if (!is.null(out_df) && nrow(out_df) > 0) {
-      listas_mes[[length(listas_mes) + 1L]] <- out_df
+      listas_anio[[length(listas_anio) + 1L]] <- out_df
     }
     Sys.sleep(PAUSA_ENTRE_QUERIES)
   }
 
-  if (length(listas_mes) == 0) {
-    message("  0 noticias en este mes.")
+  if (length(listas_anio) == 0) {
+    message("  0 noticias en este año.")
     next
   }
 
-  # Combinar todos los resultados del mes y deduplicar por URL (quedarse con la primera aparición)
-  tbl_mes <- do.call(rbind, listas_mes)
-  tbl_mes <- tbl_mes[!duplicated(tbl_mes$url), ]
+  # Combinar todos los resultados del año y deduplicar por URL
+  tbl_anio <- do.call(rbind, listas_anio)
+  tbl_anio <- tbl_anio[!duplicated(tbl_anio$url), ]
 
-  n <- insertar_noticias(con, tbl_mes)
+  n <- insertar_noticias(con, tbl_anio)
   total_insercciones <- total_insercciones + n
-  message("  ", n, " noticias insertadas/actualizadas (", nrow(tbl_mes), " únicas por URL)")
+  message("  ", n, " noticias insertadas/actualizadas (", nrow(tbl_anio), " únicas por URL)")
   Sys.sleep(1)
 }
 
 message("")
 message("Total noticias insertadas/actualizadas: ", total_insercciones)
-if (length(errores_meses) > 0) {
-  message("Meses con error (", length(errores_meses), "):")
-  for (e in errores_meses) message("  ", e)
+if (length(errores_periodos) > 0) {
+  message("Períodos con error (", length(errores_periodos), "):")
+  for (e in errores_periodos) message("  ", e)
 }

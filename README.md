@@ -1,8 +1,6 @@
 # Análisis de noticias (Chile)
 
 Pipeline en R y PostgreSQL para **recolectar** noticias de medios chilenos (paquete [datamedios](https://cran.r-project.org/web/packages/datamedios/)) — BioBioChile, Emol y el resto de fuentes que expone el paquete —, **analizar** titulares (tokenización y frecuencias por fecha) y **visualizar** resultados en un dashboard Shiny. Incluye schema SQL replicable y documentación de uso. Las credenciales de base de datos se configuran por variables de entorno (nunca en el código).
-
-
 ## Estructura
 
 ```
@@ -71,7 +69,7 @@ psql -U noticias -d noticias_chile -h localhost -f schema.sql
 psql -U noticias -d noticias_chile -h localhost -f vaciar_db.sql
 ```
 
-**Scraping** (recorre meses 2015–2026, fuentes del paquete datamedios; puede tardar mucho):
+**Scraping** (recorre **año a año** 2015–2026 con datamedios; menos llamadas que mes a mes, mejor cobertura y más rápido):
 
 ```bash
 Rscript run_scraping_datamedios.R
