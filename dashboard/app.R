@@ -307,6 +307,12 @@ server <- function(input, output, session) {
     "puede", "pueden", "poder", "debe", "deben", "deber",
     "sido", "estado", "será", "serán", "había", "habían", "habrá", "habrán",
     "revisa", "cable", "aquí", "tiene", "pide",
+    "anuncia", "anuncian", "anuncio", "confirma", "confirman", "confirmó",
+    "revela", "revelan", "informa", "informan", "asegura", "aseguran",
+    "advierte", "advierten", "destaca", "destacan", "señala", "señalan",
+    "indica", "indican", "reporta", "reportan", "denuncia", "denuncian",
+    "explica", "explican", "afirma", "afirman", "sostiene", "sostienen",
+    "dice", "dicen", "declara", "declaran", "califica", "considera",
     "quot", "amp", "lt", "gt", "nbsp", "mdash", "ndash", "rsquo", "lsquo", "hellip",
     "así"
   )

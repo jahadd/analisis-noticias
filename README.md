@@ -30,7 +30,7 @@ install.packages(c("datamedios", "DBI", "RPostgres", "lubridate", "shiny", "pool
 
 ## Configuración
 
-Variables de entorno (o archivo `.env` que no se sube al repo):
+Variables de entorno (o archivo `.env` en la **raíz del proyecto**, que no se sube al repo):
 
 | Variable    | Ejemplo          | Descripción      |
 |------------|------------------|------------------|
@@ -40,7 +40,9 @@ Variables de entorno (o archivo `.env` que no se sube al repo):
 | `PGPORT`   | 5432             | Puerto           |
 | `PGDATABASE` | noticias_chile | Base de datos    |
 
-Ejemplo en bash antes de ejecutar scripts o el dashboard:
+Si usas `.env`, colócalo en la raíz del repositorio (p. ej. `Paginaweb/.env`) con líneas como `PGPASSWORD=tu_password`. El script de análisis y el dashboard leen desde ahí si la variable no está exportada en el shell.
+
+Ejemplo en bash (alternativa a `.env`):
 
 ```bash
 export PGPASSWORD='tu_password'
@@ -96,7 +98,7 @@ Rscript -e "shiny::runApp('dashboard', port = 3838, host = '0.0.0.0')"
 
 Abrir en el navegador: **http://localhost:3838**
 
-El dashboard incluye: pestaña **Conceptos** (evolución de términos en el tiempo, top 30 términos, buscador de frecuencia por término, últimas noticias con búsqueda y paginación), pestaña **Volumen de noticias** (gráfico de área apilada por medio, distribución por medio) y sección **Insights** (hallazgos editables, p. ej. "Volumen de datos" con cifras, tendencias y limitaciones metodológicas del scraping con datamedios). Los gráficos de términos excluyen la misma lista de stopwords que el análisis (`run_analisis_titulos.R`). Los datos se recargan desde la BD en cada consulta (sin caché) para reflejar las actualizaciones del pipeline.
+El dashboard incluye: pestaña **Conceptos** (evolución de términos en el tiempo, top 30 términos, buscador de frecuencia por término, últimas noticias con búsqueda y paginación), pestaña **Volumen de noticias** (gráfico de área apilada por medio, distribución por medio) y sección **Insights** (hallazgos editables, p. ej. "Volumen de datos" con cifras, tendencias y limitaciones metodológicas del scraping con datamedios). Los gráficos de términos excluyen la misma lista de stopwords que el análisis (`run_analisis_titulos.R`): artículos, preposiciones y verbos típicos de titulares (p. ej. *anuncia*, *confirma*, *revela*, *informa*, *asegura*, *destaca*, *señala*, *indica*, *dice*, *declara*). Los datos se recargan desde la BD en cada consulta (sin caché) para reflejar las actualizaciones del pipeline.
 
 ## Documentación adicional
 

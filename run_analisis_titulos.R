@@ -15,7 +15,7 @@ suppressPackageStartupMessages({
 })
 
 # ------------------------------------------------------------------------------
-# Configuración
+# Configuración (PGPASSWORD: variable de entorno o archivo .env en este directorio)
 # ------------------------------------------------------------------------------
 PGHOST   <- Sys.getenv("PGHOST",   "localhost")
 PGPORT   <- as.integer(Sys.getenv("PGPORT", "5432"))
@@ -23,8 +23,26 @@ PGUSER   <- Sys.getenv("PGUSER",   "noticias")
 PGPASSWORD <- Sys.getenv("PGPASSWORD")
 PGDATABASE <- Sys.getenv("PGDATABASE", "noticias_chile")
 
+# Si PGPASSWORD no viene del entorno, intentar leer .env (cwd = raíz del proyecto, o carpeta del script)
 if (!nzchar(PGPASSWORD)) {
-  stop("Definir PGPASSWORD (ej. export PGPASSWORD='...')")
+  env_file <- file.path(getwd(), ".env")
+  if (!file.exists(env_file) && length(args <- commandArgs()) > 0L) {
+    idx <- grep("^--file=", args)
+    if (length(idx)) env_file <- file.path(dirname(sub("^--file=", "", args[idx[1L]])), ".env")
+  }
+  if (file.exists(env_file)) {
+    env_lines <- readLines(env_file, warn = FALSE)
+    for (line in env_lines) {
+      line <- sub("^[[:space:]]*#.*$", "", line)
+      if (grepl("^PGPASSWORD=", line)) {
+        PGPASSWORD <- sub("^PGPASSWORD=[\"']?([^\"']*)[\"']?$", "\\1", line)
+        break
+      }
+    }
+  }
+}
+if (!nzchar(PGPASSWORD)) {
+  stop("Definir PGPASSWORD (ej. export PGPASSWORD='...' o en .env en la raíz del proyecto)")
 }
 
 # Tamaño del lote por fechas: procesar de a N días para no cargar todo en memoria
@@ -53,7 +71,13 @@ STOPWORDS <- c(
   "cada", "cual", "cuales", "cualquier", "cualesquiera",
   "puede", "pueden", "poder", "debe", "deben", "deber",
   "sido", "estado", "será", "serán", "había", "habían", "habrá", "habrán",
-  "revisa", "cable", "aquí", "tiene", "pide",
+  "revisa", "cable", "aquí", "tiene", "pide", "así",
+  "anuncia", "anuncian", "anuncio", "confirma", "confirman", "confirmó",
+  "revela", "revelan", "informa", "informan", "asegura", "aseguran",
+  "advierte", "advierten", "destaca", "destacan", "señala", "señalan",
+  "indica", "indican", "reporta", "reportan", "denuncia", "denuncian",
+  "explica", "explican", "afirma", "afirman", "sostiene", "sostienen",
+  "dice", "dicen", "declara", "declaran", "califica", "considera",
   "quot", "amp", "lt", "gt", "nbsp", "mdash", "ndash", "rsquo", "lsquo", "hellip"
 )
 
@@ -108,13 +132,66 @@ DASHES_UNICODE <- paste0(
 )
 
 # Compuestos conocidos: cuando aparecen dos palabras consecutivas (con o sin guión en la fuente),
-# se emiten como un solo término con la forma en que aparece en las noticias (espacio, mayúscula).
-# Valor = lista de pares (c(palabra1, palabra2)); si el par consecutivo coincide con alguno, se emite el nombre.
+# se emiten como un solo término. Valor = lista de pares c(palabra1, palabra2) en minúsculas.
 COMPUESTOS_CONOCIDOS <- list(
+  # Deportes / medios Chile
   "Colo Colo" = list(c("colo", "colo")),
-  "Bío Bío"   = list(
-    c("bío", "bío"), c("bio", "bio"), c("bio", "bío"), c("bío", "bio")
-  )
+  "Bío Bío"   = list(c("bío", "bío"), c("bio", "bio"), c("bio", "bío"), c("bío", "bio")),
+  # Países y territorios (bigramas)
+  "Estados Unidos"     = list(c("estados", "unidos")),
+  "Reino Unido"        = list(c("reino", "unido")),
+  "Nueva Zelanda"      = list(c("nueva", "zelanda")),
+  "Costa Rica"         = list(c("costa", "rica")),
+  "Puerto Rico"        = list(c("puerto", "rico")),
+  "San Marino"         = list(c("san", "marino")),
+  "Corea del Sur"      = list(c("corea", "sur")),
+  "Corea del Norte"    = list(c("corea", "norte")),
+  "Emiratos Árabes"    = list(c("emiratos", "árabes"), c("emiratos", "arabes")),
+  "Arabia Saudita"     = list(c("arabia", "saudita"), c("arabia", "saudí")),
+  "Guinea Ecuatorial"  = list(c("guinea", "ecuatorial")),
+  "Sierra Leona"       = list(c("sierra", "leona")),
+  "Burkina Faso"       = list(c("burkina", "faso")),
+  "Cabo Verde"         = list(c("cabo", "verde")),
+  "Timor Oriental"     = list(c("timor", "oriental")),
+  "Sri Lanka"          = list(c("sri", "lanka")),
+  "Papúa Nueva"        = list(c("papúa", "nueva"), c("papua", "nueva")),
+  "Nueva Guinea"       = list(c("nueva", "guinea")),
+  "América Latina"     = list(c("américa", "latina"), c("america", "latina")),
+  "Medio Oriente"      = list(c("medio", "oriente")),
+  "Naciones Unidas"    = list(c("naciones", "unidas")),
+  "Ciudad del Vaticano" = list(c("ciudad", "vaticano")),
+  "Hong Kong"          = list(c("hong", "kong")),
+  # Organizaciones y términos frecuentes en noticias
+  "Casa Blanca"        = list(c("casa", "blanca")),
+  "Banco Central"      = list(c("banco", "central")),
+  "Fuerzas Armadas"    = list(c("fuerzas", "armadas")),
+  "Derechos Humanos"   = list(c("derechos", "humanos")),
+  "Cruz Roja"          = list(c("cruz", "roja")),
+  "Unión Europea"      = list(c("unión", "europea"), c("union", "europea")),
+  "Primera Guerra"     = list(c("primera", "guerra")),
+  "Segunda Guerra"     = list(c("segunda", "guerra")),
+  "Guerra Mundial"     = list(c("guerra", "mundial")),
+  "Poder Judicial"     = list(c("poder", "judicial")),
+  "Tribunal Constitucional" = list(c("tribunal", "constitucional")),
+  "Cámara de Diputados" = list(c("cámara", "diputados"), c("camara", "diputados")),
+  "Presidente de la República" = list(c("presidente", "república"), c("presidente", "republica"))
+)
+
+# Formas con guión que se normalizan al nombre con espacio (cuando la fuente escribe "estados-unidos" etc.)
+GUION_A_NOMBRE <- c(
+  "estados-unidos" = "Estados Unidos", "reino-unido" = "Reino Unido", "nueva-zelanda" = "Nueva Zelanda",
+  "costa-rica" = "Costa Rica", "puerto-rico" = "Puerto Rico", "corea-del-sur" = "Corea del Sur",
+  "corea-del-norte" = "Corea del Norte", "emiratos-árabes" = "Emiratos Árabes", "emiratos-arabes" = "Emiratos Árabes",
+  "arabia-saudita" = "Arabia Saudita", "guinea-ecuatorial" = "Guinea Ecuatorial", "sierra-leona" = "Sierra Leona",
+  "burkina-faso" = "Burkina Faso", "cabo-verde" = "Cabo Verde", "timor-oriental" = "Timor Oriental",
+  "sri-lanka" = "Sri Lanka", "papúa-nueva" = "Papúa Nueva", "papua-nueva" = "Papúa Nueva",
+  "nueva-guinea" = "Nueva Guinea", "américa-latina" = "América Latina", "america-latina" = "América Latina",
+  "medio-oriente" = "Medio Oriente", "naciones-unidas" = "Naciones Unidas", "hong-kong" = "Hong Kong",
+  "casa-blanca" = "Casa Blanca", "banco-central" = "Banco Central", "fuerzas-armadas" = "Fuerzas Armadas",
+  "derechos-humanos" = "Derechos Humanos", "cruz-roja" = "Cruz Roja", "unión-europea" = "Unión Europea", "union-europea" = "Unión Europea",
+  "san-marino" = "San Marino", "ciudad-vaticano" = "Ciudad del Vaticano",
+  "poder-judicial" = "Poder Judicial", "tribunal-constitucional" = "Tribunal Constitucional",
+  "colo-colo" = "Colo Colo", "bío-bío" = "Bío Bío", "bio-bio" = "Bío Bío"
 )
 
 # Unir bigramas que forman un compuesto conocido (devuelve vector de tokens)
@@ -170,11 +247,12 @@ tokenizar_titulo <- function(titulo, stopwords, min_len = 3L) {
   tokens <- tokens[nchar(tokens) >= min_len]
   # Excluir tokens que son solo números (ej. "36", "2024")
   tokens <- tokens[grepl("[a-zñáéíóúü]", tokens, ignore.case = TRUE)]
-  # Fusionar bigramas conocidos (ej. "colo" + "colo" -> "Colo Colo") cuando la fuente escribe con espacio
+  # Fusionar bigramas conocidos (ej. "estados" + "unidos" -> "Estados Unidos") cuando la fuente escribe con espacio
   tokens <- fusionar_compuestos_conocidos(tokens, COMPUESTOS_CONOCIDOS)
-  # Unificar forma con guión a la forma de noticias (espacio): colo-colo -> Colo Colo, bío-bío -> Bío Bío
-  tokens[tokens == "colo-colo"] <- "Colo Colo"
-  tokens[tokens == "bío-bío"]   <- "Bío Bío"
+  # Unificar forma con guión a la forma con espacio (estados-unidos -> Estados Unidos, etc.)
+  for (k in seq_along(GUION_A_NOMBRE)) {
+    tokens[tokens == names(GUION_A_NOMBRE)[k]] <- unname(GUION_A_NOMBRE[k])
+  }
   # Palabras compuestas con guión: conservar si es un compuesto conocido (Bío Bío, Colo Colo) o si tienen forma palabra-palabra
   compuestos_ok <- vapply(tokens, function(t) {
     if (!grepl("-", t, fixed = TRUE)) return(TRUE)

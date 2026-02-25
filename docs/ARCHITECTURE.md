@@ -87,7 +87,8 @@ Asegurar índices en `noticias` para que el script lea por rango de fechas de fo
 ### 4.2 Conexión a PostgreSQL
 
 - Leer credenciales desde variables de entorno: `PGUSER`, `PGPASSWORD`, `PGHOST` (default `localhost`), `PGPORT` (default `5432`), `PGDATABASE`.
-- No dejar contraseña en el script; usar `Sys.getenv("PGPASSWORD")` y documentar en README o `.env.example`.
+- No dejar contraseña en el script; usar `Sys.getenv("PGPASSWORD")`. Si no está definida en el entorno, el script intenta leer `PGPASSWORD` desde un archivo `.env` en la raíz del proyecto (directorio de trabajo al ejecutar o carpeta del script).
+- Documentar en README y `.env.example`.
 
 ### 4.3 Lectura de datos
 
@@ -100,7 +101,7 @@ Asegurar índices en `noticias` para que el script lea por rango de fechas de fo
 - Por cada título: pasar a minúsculas (locale neutro o español).
 - Opcional: normalizar acentos (NFC o quitar acentos).
 - Split por espacios y puntuación (regex: `[^a-z0-9ñáéíóúü]+` o equivalente).
-- Filtrar: longitud mínima (ej. 2 caracteres), lista fija de stopwords (archivo `stopwords_es.txt` o vector en el script).
+- Filtrar: longitud mínima (ej. 3 caracteres), lista fija de stopwords (vector en el script). Incluye artículos, preposiciones, pronombres, verbos auxiliares y **verbos típicos de titulares** (p. ej. *anuncia*, *confirma*, *revela*, *informa*, *asegura*, *advierte*, *destaca*, *señala*, *indica*, *reporta*, *denuncia*, *explica*, *afirma*, *sostiene*, *dice*, *declara*, *califica*, *considera*) para que no dominen los rankings.
 - No stemmear ni lematizar para mantener el pipeline simple y auditable.
 
 ### 4.5 Agregación y escritura
@@ -141,7 +142,7 @@ Asegurar índices en `noticias` para que el script lea por rango de fechas de fo
 - **Volumen de noticias:** gráfico de área apilada por medio (volumen por día/año por medio + línea total), gráfico de distribución por medio (barras).
 - **Insights:** sección lateral con artículos editables (título, párrafos, imágenes). Incluye el insight "Volumen de datos" (cifras del período, distribución por medio con totales, tendencias temporales y limitaciones metodológicas de datamedios). Las imágenes estáticas se sirven desde `dashboard/www/`.
 
-En los gráficos y tarjetas de términos se aplica el **mismo filtro de stopwords** que en `run_analisis_titulos.R` (artículos, preposiciones, “primer”, “así”, etc.), de modo que no aparezcan en evolución ni en top 30. El buscador de términos no filtra: muestra cualquier coincidencia para consultar frecuencias.
+En los gráficos y tarjetas de términos se aplica el **mismo filtro de stopwords** que en `run_analisis_titulos.R` (artículos, preposiciones, “primer”, “así”, y verbos de titulares como *anuncia*, *confirma*, *revela*, *informa*, *destaca*, *señala*, *dice*, *declara*, etc.), de modo que no aparezcan en evolución ni en top 30. El buscador de términos no filtra: muestra cualquier coincidencia para consultar frecuencias.
 
 ### 5.3 Variables del dashboard (qué se muestra y de dónde sale)
 
