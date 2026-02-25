@@ -2,7 +2,9 @@
 
 Aplicación Shiny que consulta las tablas de agregados y `noticias` (solo lectura). Requiere las mismas variables de entorno que el resto del proyecto (`PGUSER`, `PGPASSWORD`, `PGHOST`, `PGPORT`, `PGDATABASE`). Dependencias R: `shiny`, `plotly`, `pool`, `DBI`, `RPostgres`, `ggplot2`, `dplyr`.
 
-**Ejecutar desde la raíz del repositorio:**
+Incluye pestañas **Conceptos** (términos, evolución, top 30, buscador, últimas noticias), **Volumen de noticias** (gráficos por medio) y sección **Insights** (artículos editables con texto e imágenes; las imágenes se colocan en `www/` y se referencian por nombre en `app.R`).
+
+**Ejecutar desde la raíz del repositorio (carpeta `noticias`):**
 
 ```bash
 export PGPASSWORD='tu_password'

@@ -135,10 +135,11 @@ Asegurar índices en `noticias` para que el script lea por rango de fechas de fo
 - **Protagonista: etiquetas (términos).** La interfaz responde: "¿Qué términos dominan en los titulares?", "¿Cómo evoluciona cada término en el tiempo?" y "¿Cuál es el término más frecuente?". El volumen de noticias es contexto secundario.
 - Sin sobrecarga: prioridad visual a términos; volumen en tarjetas pequeñas o una línea.
 
-### 5.2 Estructura del dashboard (dos pestañas)
+### 5.2 Estructura del dashboard (pestañas y sección Insights)
 
 - **Conceptos:** tarjetas (términos distintos, término más frecuente), texto de volumen, gráfico de evolución de términos en el tiempo (selector top 10), gráfico top 30 términos, buscador de frecuencia por término (muestra todas las coincidencias con ILIKE), últimas noticias con búsqueda en titulares y paginación (5 por página).
-- **Volumen de noticias:** gráfico de área apilada por medio (volumen por día/ano por medio + línea total), gráfico de distribución por medio (barras).
+- **Volumen de noticias:** gráfico de área apilada por medio (volumen por día/año por medio + línea total), gráfico de distribución por medio (barras).
+- **Insights:** sección lateral con artículos editables (título, párrafos, imágenes). Incluye el insight "Volumen de datos" (cifras del período, distribución por medio con totales, tendencias temporales y limitaciones metodológicas de datamedios). Las imágenes estáticas se sirven desde `dashboard/www/`.
 
 En los gráficos y tarjetas de términos se aplica el **mismo filtro de stopwords** que en `run_analisis_titulos.R` (artículos, preposiciones, “primer”, “así”, etc.), de modo que no aparezcan en evolución ni en top 30. El buscador de términos no filtra: muestra cualquier coincidencia para consultar frecuencias.
 
@@ -183,6 +184,7 @@ Todas las consultas dependen del **filtro de fechas** (date range). No se usa ca
 - **Buscador de términos:** campo de texto; lista de coincidencias con frecuencia (término (N)); sin filtrar stopwords.
 - **Tabla últimas noticias:** titulo, fecha, medio, enlace; búsqueda por titular; paginación 5 por página.
 - **Pestaña Volumen:** gráfico de área apilada por medio (y línea total); gráfico de distribución por medio.
+- **Insights:** selector lateral; contenido por insight (títulos, párrafos, imágenes en `www/`), con soporte para varios párrafos e imágenes (incl. disposición lado a lado).
 
 ### 5.8 Estética y rendimiento
 
@@ -205,4 +207,5 @@ Todas las consultas dependen del **filtro de fechas** (date range). No se usa ca
 - `schema.sql` — schema completo de la BD: tabla `noticias`, tablas de agregados e índices (para replicar desde cero).
 - `vaciar_db.sql` — vacía tablas para recarga completa.
 - `dashboard/app.R` — aplicación Shiny.
+- `dashboard/www/` — imágenes estáticas para insights (Shiny las sirve en la raíz).
 - `.env.example` — plantilla de variables de entorno (copiar a `.env`, no subir `.env`).

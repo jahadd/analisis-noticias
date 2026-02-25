@@ -45,7 +45,7 @@ onStop(function() {
 # ------------------------------------------------------------------------------
 ui <- fluidPage(
   tags$head(
-    tags$title("Dashboard Noticias — Titulares y tendencias (2015-2026)"),
+    tags$title("Dashboard Noticias Chile— Titulares y tendencias (2015-2026)"),
     tags$style(HTML("
       .dashboard-title {
         font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
@@ -107,6 +107,10 @@ ui <- fluidPage(
         padding: 6px 10px; margin-bottom: 2px;
         border-radius: 6px; background: #e7f1ff; border: 1px solid #b6d4fe;
         font-size: inherit; color: #0d6efd; display: flex; justify-content: space-between; align-items: baseline; gap: 8px;
+        cursor: pointer; transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+      }
+      .frecuencia-termino-item:hover {
+        background: #cfe2ff; border-color: #0d6efd; box-shadow: 0 0 0 1px rgba(13, 110, 253, 0.25);
       }
       .frecuencia-termino-nombre { font-weight: 500; word-break: break-word; }
       .frecuencia-termino-num { font-weight: 700; white-space: nowrap; }
@@ -114,25 +118,71 @@ ui <- fluidPage(
       .busqueda-noticias .form-group { margin-bottom: 0; }
       .busqueda-noticias .form-control {
         max-width: 320px;
-        padding: 6px 12px;
+        padding: 8px 14px;
         border-radius: 8px;
         border: 1px solid #dee2e6;
-        font-size: 0.9rem;
+        font-size: 1.05rem;
       }
       .busqueda-noticias .form-control:focus {
         border-color: #0d6efd;
         box-shadow: 0 0 0 2px rgba(13, 110, 253, 0.2);
       }
       .seccion-ultimas-noticias h4 { margin-bottom: 0.5rem; }
+      .insights-tab {
+        width: 100%; max-width: 100%; padding: 0;
+        font-size: 1.4rem; line-height: 1.6; color: #2d3748;
+      }
+      .insights-tab h4 { font-size: 1.75rem; font-weight: 600; color: #1a1a2e; margin-bottom: 1rem; letter-spacing: -0.02em; }
+      .insights-subtitle {
+        font-size: 1.4rem; color: #4a5568; margin-bottom: 2rem; line-height: 1.6;
+      }
+      .insight-contenido {
+        padding: 0; margin: 0;
+        font-size: 1.4rem; line-height: 1.65; color: #2d3748;
+      }
+      .insight-contenido .insight-titulo {
+        font-size: 1.75rem; font-weight: 600; color: #1a1a2e;
+        margin: 0 0 1.25rem 0; letter-spacing: -0.02em; padding-bottom: 0.75rem;
+        border-bottom: 2px solid #e2e8f0;
+      }
+      .insight-contenido .insight-texto {
+        margin: 0 0 1rem 0; font-size: 1.4rem; color: #2d3748; line-height: 1.65;
+      }
+      .insight-contenido .insight-texto:last-child { margin-bottom: 0; }
+      .insight-contenido a.insight-link { color: #0d6efd; text-decoration: none; border-bottom: 1px solid #0d6efd; }
+      .insight-contenido a.insight-link:hover { text-decoration: underline; }
+      .insight-contenido .insight-imagen { max-width: 100%; height: auto; display: block; margin: 1rem 0; border-radius: 8px; }
+      .insight-contenido .insight-imagenes-fila { display: flex; flex-wrap: wrap; gap: 1rem; margin: 1rem 0; align-items: flex-start; }
+      .insight-contenido .insight-imagenes-fila .insight-imagen { flex: 1 1 280px; max-width: 100%; margin: 0; }
+      .sidebar-insights { margin-bottom: 0; }
+      .sidebar-insights .shiny-options-group { display: flex; flex-direction: column; gap: 0; }
+      .sidebar-insights .radio { margin: 0; }
+      .sidebar-insights input[type='radio'] { display: none; }
+      .sidebar-insights .radio label {
+        padding: 0.75rem 0; margin: 0;
+        border: none; border-bottom: 1px solid #e2e8f0;
+        background: transparent; cursor: pointer; display: block;
+        font-size: 1.25rem; font-weight: 400; color: #475569;
+        transition: color 0.2s ease, font-weight 0.2s ease;
+      }
+      .sidebar-insights .radio label:last-of-type { border-bottom: none; }
+      .sidebar-insights .radio label:hover { color: #1e293b; }
+      .sidebar-insights .radio input:checked + label,
+      .sidebar-insights .radio label:has(input:checked) {
+        color: #0d6efd; font-weight: 600; background: transparent;
+      }
     "))
   ),
   div(style = "padding: 1rem 1rem 0;"),
-  h1(class = "dashboard-title", "Titulares: etiquetas y tendencias"),
+  h1(class = "dashboard-title", "Dashboard Noticias Chile— Titulares y tendencias (2015-2026)"),
   p(class = "dashboard-subtitle", "Análisis de términos en titulares y volumen de noticias"),
-  sidebarLayout(
-    sidebarPanel(
-      width = 3,
-      div(class = "sidebar-seccion",
+  div(id = "main-layout-wrapper",
+    sidebarLayout(
+      sidebarPanel(
+        width = 3,
+        conditionalPanel(
+          condition = "input.tabs !== 'Insights'",
+          div(class = "sidebar-seccion",
         tags$label(class = "control-label", "Rango de fechas"),
         dateRangeInput(
           "fechas",
@@ -148,9 +198,16 @@ ui <- fluidPage(
           actionButton("preset_30", "Último mes",     class = "btn-sm"),
           actionButton("preset_90", "Último trimestre", class = "btn-sm")
         )
-      ),
-      conditionalPanel(
-        condition = "input.tabs === 'Conceptos'",
+          )
+        ),
+        conditionalPanel(
+          condition = "input.tabs === 'Insights'",
+          div(class = "sidebar-seccion sidebar-insights",
+            uiOutput("selector_insights")
+          )
+        ),
+        conditionalPanel(
+          condition = "input.tabs === 'Conceptos'",
         div(class = "sidebar-seccion sidebar-terminos",
           uiOutput("selector_terminos_evol"),
           div(class = "busqueda-termino",
@@ -208,10 +265,17 @@ ui <- fluidPage(
           hr(),
           h4("Distribución por medio"),
           plotlyOutput("grafico_por_medio", height = "380px")
+        ),
+        tabPanel(
+          "Insights",
+          div(class = "insights-tab",
+            uiOutput("insight_contenido_seleccionado")
+          )
         )
       )
     )
   )
+)
 )
 
 # ------------------------------------------------------------------------------
@@ -307,6 +371,18 @@ server <- function(input, output, session) {
     out <- dbGetQuery(pool, q, params = c(list(f$start, f$end), as.list(STOPWORDS_GRAFICOS)))
     if (nrow(out) > 0L) out$total <- as.integer(as.numeric(out$total))
     out
+  })
+
+  # Términos añadidos por clic desde el buscador de frecuencias (solo esos suben a la lista de evolución)
+  terminos_anadidos_por_clic <- reactiveVal(character(0))
+
+  # Términos disponibles para el gráfico de evolución: top 10 + solo los que el usuario ha añadido con clic
+  terminos_evolucion_disponibles <- reactive({
+    top <- top_10_evol()
+    anadidos <- terminos_anadidos_por_clic()
+    if (nrow(top) == 0 && length(anadidos) == 0) return(character(0))
+    base <- if (nrow(top) > 0) top$termino else character(0)
+    unique(c(base, anadidos))
   })
 
   # Top 30 términos para el gráfico de barras. total como numérico para evitar integer64 en plotly. Excluye stopwords.
@@ -451,6 +527,111 @@ server <- function(input, output, session) {
     out
   })
 
+  # Lista de insights (editar títulos, textos e imagen aquí; imagen = URL o ruta, opcional)
+  # Para múltiples párrafos e imágenes: texto = vector de caracteres, imagenes = vector de rutas.
+  insights_lista <- reactive({
+    list(
+      list(
+        id = "insight_1",
+        titulo = "Volumen de datos",
+        texto = c(
+          "El período analizado registra 38.603 noticias, entre 2015 y 2019 el volumen se mantiene relativamente estable; desde 2020 se observa un crecimiento sostenido que culmina en un máximo en 2025, seguido de una disminución en 2026. El aumento posterior a 2020 podría estar asociado a una mayor producción y consumo de información digital en el contexto de la pandemia, que aceleró procesos de digitalización en los medios. Esta relación debe entenderse como una explicación plausible y contextual, no como una causalidad demostrada por los datos.",
+          "La distribución por medio es altamente concentrada en BioBio (35.066 noticias), muy por sobre Emol (2.617), medios regionales (838) y Guioteca (82). Una posible explicación es que BioBio presenta una plataforma digital técnicamente más robusta y estructurada, lo que facilita tanto la publicación como la indexación y extracción de contenido. Factores como una arquitectura web más eficiente, mayor frecuencia de actualización, mejor estandarización de metadatos o una estrategia digital más consolidada podrían contribuir a esta diferencia. Estas son hipótesis plausibles, pero no conclusiones definitivas derivadas únicamente del volumen observado.",
+          "El total de noticias también está condicionado por el diseño metodológico. La librería datamedios obliga a realizar búsquedas mediante queries específicas, por lo que la base depende estrictamente de los términos ingresados y no corresponde a una descarga exhaustiva del contenido completo de los medios. Además, en el caso de Emol, la documentación indica que la iteración entrega un máximo de 10 resultados por página; si el paquete no pagina completamente en períodos de alta densidad, parte de los resultados podría no recuperarse. El flujo utilizado tampoco permite controlar explícitamente un máximo de resultados ni forzar paginación adicional, por lo que eventuales límites internos del paquete podrían afectar el volumen final."
+        ),
+        imagen = NULL,
+        imagenes = c("volumen_por_medio_tiempo.png?v=2", "volumen_por_medio_tiempo_2.png", "volumen_por_medio_barras.png"),
+        imagenes_lado_a_lado = 2L
+      )
+    )
+  })
+
+  output$selector_insights <- renderUI({
+    ins <- insights_lista()
+    if (length(ins) == 0) return(NULL)
+    choices <- c("Inicio" = "", setNames(vapply(ins, function(x) x$id, character(1L)), vapply(ins, function(x) x$titulo, character(1L))))
+    radioButtons(
+      "insight_seleccionado",
+      label = NULL,
+      choices = choices,
+      selected = ""
+    )
+  })
+
+  output$insight_contenido_seleccionado <- renderUI({
+    ins <- insights_lista()
+    sel <- input$insight_seleccionado
+    intro_titulo <- "Insight"
+    intro_texto <- "A continuación se presentan hallazgos relevantes derivados del análisis de los datos. Si identifica algún dato de interés que no figure aquí, puede compartirlo a través de la aplicación de notas."
+    proyecto_texto <- "Este dashboard forma parte de un pipeline de análisis de titulares de noticias chilenas: ingesta desde fuentes RSS, almacenamiento en PostgreSQL, extracción de términos (tokenización y filtrado de stopwords) y agregación diaria. La capa de visualización está implementada en R (Shiny + Plotly) y se conecta a la base mediante pool/DBI/RPostgres."
+    repo_url <- "https://github.com/jahadd/analisis-noticias"
+    if (length(ins) == 0 || is.null(sel) || sel == "") {
+      return(tags$div(
+        class = "insight-contenido",
+        tags$h2(class = "insight-titulo", intro_titulo),
+        tags$p(class = "insight-texto", intro_texto),
+        tags$p(class = "insight-texto", proyecto_texto),
+        tags$p(class = "insight-texto",
+          "Repositorio: ",
+          tags$a(href = repo_url, target = "_blank", rel = "noopener", class = "insight-link", repo_url)
+        )
+      ))
+    }
+    idx <- match(sel, vapply(ins, function(x) x$id, character(1L)))
+    if (is.na(idx)) {
+      return(tags$div(
+        class = "insight-contenido",
+        tags$h2(class = "insight-titulo", intro_titulo),
+        tags$p(class = "insight-texto", intro_texto),
+        tags$p(class = "insight-texto", proyecto_texto),
+        tags$p(class = "insight-texto",
+          "Repositorio: ",
+          tags$a(href = repo_url, target = "_blank", rel = "noopener", class = "insight-link", repo_url)
+        )
+      ))
+    }
+    x <- ins[[idx]]
+    # Insight con múltiples párrafos e imágenes (texto = vector, imagenes = vector)
+    parrafos <- if (is.character(x$texto) && length(x$texto) > 1L) x$texto else character(0)
+    imgs <- if (!is.null(x$imagenes) && is.character(x$imagenes) && length(x$imagenes) > 0L)
+      x$imagenes else character(0)
+    lado_a_lado <- if (!is.null(x$imagenes_lado_a_lado)) as.integer(x$imagenes_lado_a_lado)[1] else 0L
+    if (length(parrafos) > 0L && length(imgs) >= 2L) {
+      hijos <- list(tags$h2(class = "insight-titulo", x$titulo))
+      img_idx <- 1L
+      for (i in seq_along(parrafos)) {
+        hijos[[length(hijos) + 1L]] <- tags$p(class = "insight-texto", parrafos[i])
+        if (i == 1L && img_idx <= length(imgs)) {
+          if (lado_a_lado >= 2L && length(imgs) >= 2L) {
+            hijos[[length(hijos) + 1L]] <- tags$div(
+              class = "insight-imagenes-fila",
+              tags$img(src = imgs[1], alt = "", class = "insight-imagen"),
+              tags$img(src = imgs[2], alt = "", class = "insight-imagen")
+            )
+            img_idx <- 3L
+          } else {
+            hijos[[length(hijos) + 1L]] <- tags$img(src = imgs[1], alt = "", class = "insight-imagen")
+            img_idx <- 2L
+          }
+        }
+        if (i == 2L && img_idx <= length(imgs))
+          hijos[[length(hijos) + 1L]] <- tags$img(src = imgs[img_idx], alt = "", class = "insight-imagen")
+      }
+      tags$div(class = "insight-contenido", hijos)
+    } else {
+      img_tag <- if (!is.null(x$imagen) && is.character(x$imagen) && nzchar(trimws(x$imagen)))
+        tags$img(src = x$imagen, alt = "", class = "insight-imagen")
+      else NULL
+      texto_uno <- if (is.character(x$texto)) if (length(x$texto) == 1L) x$texto else paste(x$texto, collapse = " ") else as.character(x$texto)
+      tags$div(
+        class = "insight-contenido",
+        tags$h2(class = "insight-titulo", x$titulo),
+        if (!is.null(img_tag)) img_tag,
+        tags$p(class = "insight-texto", texto_uno)
+      )
+    }
+  })
+
   # ---- Outputs ----
   output$card_terminos_distintos <- renderUI({
     n <- n_terminos()
@@ -487,9 +668,19 @@ server <- function(input, output, session) {
   })
 
   output$selector_terminos_evol <- renderUI({
+    disponibles <- terminos_evolucion_disponibles()
+    if (length(disponibles) == 0) return(NULL)
+    choices <- setNames(disponibles, disponibles)
     top <- top_10_evol()
-    if (nrow(top) == 0) return(NULL)
-    choices <- setNames(top$termino, top$termino)
+    # Selección solo por defecto o lo que el usuario tenga elegido; no auto-añadir términos de la búsqueda
+    current_input <- input$terminos_evolucion
+    if (!is.null(current_input) && length(current_input) > 0) {
+      selected <- intersect(current_input, disponibles)
+    } else {
+      selected <- if (nrow(top) >= 2) head(top$termino, 2) else if (nrow(top) == 1) top$termino else head(disponibles, min(2L, length(disponibles)))
+    }
+    if (length(selected) == 0 && length(disponibles) > 0)
+      selected <- head(disponibles, min(2L, length(disponibles)))
     div(class = "term-chips-box",
       tags$label(class = "control-label", style = "display: block; margin-bottom: 6px;",
         "Términos para el gráfico de evolución"
@@ -498,7 +689,7 @@ server <- function(input, output, session) {
         "terminos_evolucion",
         label = NULL,
         choices = choices,
-        selected = head(top$termino, 2),
+        selected = selected,
         inline = TRUE
       )
     )
@@ -528,13 +719,17 @@ server <- function(input, output, session) {
   output$frecuencia_termino <- renderUI({
     busq <- trimws(if (is.null(input$busqueda_termino)) "" else input$busqueda_termino)
     if (nchar(busq) == 0)
-      return(tags$p(class = "frecuencia-termino-msg", "Escribe un término arriba para ver coincidencias y su frecuencia en el período."))
+      return(tags$p(class = "frecuencia-termino-msg", "Escribe un término arriba para ver coincidencias y su frecuencia. Haz clic en una casilla para añadirla al gráfico de evolución."))
     res <- resultados_busqueda_termino()
     if (is.null(res) || nrow(res) == 0)
       return(tags$p(class = "frecuencia-termino-msg", paste0("No se encontraron términos que coincidan con \"", busq, "\".")))
     items <- lapply(seq_len(nrow(res)), function(i) {
+      term_esc <- gsub("\\\\", "\\\\\\\\", gsub("'", "\\\\'", res$termino[i], fixed = TRUE), fixed = TRUE)
+      onclick_js <- sprintf("Shiny.setInputValue('termo_añadir_evol', '%s', {priority: 'event'})", term_esc)
       tags$div(
         class = "frecuencia-termino-item",
+        onclick = onclick_js,
+        role = "button",
         tags$span(class = "frecuencia-termino-nombre", res$termino[i]),
         tags$span(class = "frecuencia-termino-num", paste0("(", format(res$total[i], big.mark = ".", decimal.mark = ","), ")"))
       )
@@ -542,10 +737,22 @@ server <- function(input, output, session) {
     tags$div(class = "frecuencia-termino-lista", items)
   })
 
+  # Al hacer clic en una casilla de resultado de búsqueda, se añade solo ese término a la lista y al gráfico de evolución
+  observeEvent(input$termo_añadir_evol, {
+    term <- input$termo_añadir_evol
+    if (is.null(term) || !nzchar(trimws(term))) return()
+    terminos_anadidos_por_clic(unique(c(terminos_anadidos_por_clic(), term)))
+    current <- input$terminos_evolucion
+    if (is.null(current)) current <- character(0)
+    updateCheckboxGroupInput(session, "terminos_evolucion", selected = unique(c(current, term)))
+  })
+
   output$grafico_evolucion <- renderPlotly({
     d <- datos_evolucion()
     if (nrow(d) == 0) {
       return(plot_ly() %>%
+        add_trace(x = 0, y = 0, type = "scatter", mode = "markers",
+                  marker = list(opacity = 0, size = 0.1), hoverinfo = "skip", showlegend = FALSE) %>%
         layout(
           title = list(text = "Selecciona al menos un término en el panel izquierdo.", font = list(size = 14)),
           margin = list(t = 60),
@@ -632,6 +839,8 @@ server <- function(input, output, session) {
     top <- top_30_df()
     if (nrow(top) == 0) {
       return(plot_ly() %>%
+        add_trace(x = 0, y = 0, type = "scatter", mode = "markers",
+                  marker = list(opacity = 0, size = 0.1), hoverinfo = "skip", showlegend = FALSE) %>%
         layout(
           title = list(text = "No hay datos para el rango elegido.", font = list(size = 14)),
           margin = list(t = 60),
@@ -646,8 +855,6 @@ server <- function(input, output, session) {
       labs(x = "Frecuencia total", y = NULL) +
       theme_minimal(base_size = 12)
     p <- suppressWarnings(ggplotly(gg, tooltip = "text"))
-    n_t <- length(p$x$data)
-    if (n_t > 0L) p <- style(p, mode = "markers", traces = seq_len(n_t))
     p %>% config(displayModeBar = TRUE, locale = "es")
   })
 
@@ -696,6 +903,8 @@ server <- function(input, output, session) {
     d <- volumen_por_dia_por_medio()
     if (nrow(d) == 0) {
       return(plot_ly() %>%
+        add_trace(x = 0, y = 0, type = "scatter", mode = "markers",
+                  marker = list(opacity = 0, size = 0.1), hoverinfo = "skip", showlegend = FALSE) %>%
         layout(
           title = list(text = "No hay datos para el rango elegido.", font = list(size = 14)),
           margin = list(t = 60),
@@ -813,6 +1022,8 @@ server <- function(input, output, session) {
     d <- noticias_por_medio()
     if (nrow(d) == 0) {
       return(plot_ly() %>%
+        add_trace(x = 0, y = 0, type = "scatter", mode = "markers",
+                  marker = list(opacity = 0, size = 0.1), hoverinfo = "skip", showlegend = FALSE) %>%
         layout(
           title = list(text = "No hay datos para el rango elegido.", font = list(size = 14)),
           margin = list(t = 60),
@@ -829,8 +1040,6 @@ server <- function(input, output, session) {
       theme_minimal(base_size = 12) +
       theme(legend.position = "none")
     p <- suppressWarnings(ggplotly(gg, tooltip = "text"))
-    n_t <- length(p$x$data)
-    if (n_t > 0L) p <- style(p, mode = "markers", traces = seq_len(n_t))
     p %>% config(displayModeBar = TRUE, locale = "es")
   })
 }
