@@ -59,13 +59,17 @@ ui <- fluidPage(
         border-bottom: 3px solid #0d6efd;
       }
       .dashboard-subtitle {
-        font-size: 0.95rem;
+        font-size: 1.2rem;
         color: #6c757d;
         margin: 0 0 1.25rem 0;
       }
       .small-metric { font-size: 0.9em; color: #6c757d; margin-top: 8px; }
-      .card-box { padding: 12px; border-radius: 6px; background: #f8f9fa; border: 1px solid #dee2e6; }
+      .card-box { padding: 14px 16px; border-radius: 8px; background: #f8f9fa; border: 1px solid #dee2e6; min-height: 88px; display: flex; flex-direction: column; justify-content: flex-start; }
+      .card-box h5 { margin: 0 0 0.5rem 0; font-size: 1rem; font-weight: 600; color: #1a1a2e; }
+      .card-box .valor-fila { display: flex; align-items: baseline; gap: 0.75rem; flex-wrap: wrap; margin-top: 0.25rem; }
       .card-box .valor { font-size: 1.8em; font-weight: bold; color: #0d6efd; }
+      .card-box .valor-sub { font-size: 0.95em; color: #6c757d; white-space: nowrap; }
+      .tab-content { padding-top: 1.25rem; }
       .sidebar-seccion { margin-bottom: 1.25rem; }
       .sidebar-seccion .control-label { font-weight: 600; margin-bottom: 6px; display: block; color: #1a1a2e; }
       .sidebar-terminos { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #dee2e6; }
@@ -130,40 +134,42 @@ ui <- fluidPage(
       .seccion-ultimas-noticias h4 { margin-bottom: 0.5rem; }
       .insights-tab {
         width: 100%; max-width: 100%; padding: 0;
-        font-size: 1.4rem; line-height: 1.6; color: #2d3748;
+        font-size: 1.2rem; line-height: 1.65; color: #2d3748;
       }
-      .insights-tab h4 { font-size: 1.75rem; font-weight: 600; color: #1a1a2e; margin-bottom: 1rem; letter-spacing: -0.02em; }
+      .insights-tab h4 { font-size: 2.25rem; font-weight: 700; color: #1a1a2e; margin-bottom: 1rem; letter-spacing: -0.02em; }
       .insights-subtitle {
-        font-size: 1.4rem; color: #4a5568; margin-bottom: 2rem; line-height: 1.6;
+        font-size: 1.3rem; color: #4a5568; margin-bottom: 2rem; line-height: 1.6;
       }
       .insight-contenido {
-        padding: 0; margin: 0;
-        font-size: 1.4rem; line-height: 1.65; color: #2d3748;
+        padding: 1.5rem 1.75rem; margin: 0;
+        font-size: 1.2rem; line-height: 1.65; color: #2d3748;
+        background: #fafafa;
+        border: 1px solid #e5e7eb;
       }
       .insight-contenido .insight-titulo {
-        font-size: 1.75rem; font-weight: 600; color: #1a1a2e;
+        font-size: 2.35rem; font-weight: 700; color: #1a1a2e;
         margin: 0 0 1.25rem 0; letter-spacing: -0.02em; padding-bottom: 0.75rem;
-        border-bottom: 2px solid #e2e8f0;
+        border-bottom: 1px solid #e5e7eb;
       }
       .insight-contenido .insight-texto {
-        margin: 0 0 1rem 0; font-size: 1.4rem; color: #2d3748; line-height: 1.65;
+        margin: 0 0 1.25rem 0; font-size: 1.2rem; color: #334155; line-height: 1.7;
       }
       .insight-contenido .insight-texto:last-child { margin-bottom: 0; }
-      .insight-contenido a.insight-link { color: #0d6efd; text-decoration: none; border-bottom: 1px solid #0d6efd; }
-      .insight-contenido a.insight-link:hover { text-decoration: underline; }
-      .insight-contenido .insight-imagen { max-width: 100%; height: auto; display: block; margin: 1rem 0; border-radius: 8px; }
-      .insight-contenido .insight-imagenes-fila { display: flex; flex-wrap: wrap; gap: 1rem; margin: 1rem 0; align-items: flex-start; }
+      .insight-contenido a.insight-link { color: #1a1a2e; text-decoration: underline; text-underline-offset: 2px; }
+      .insight-contenido a.insight-link:hover { color: #374151; }
+      .insight-contenido .insight-imagen { max-width: 100%; height: auto; display: block; margin: 1.25rem 0; border: 1px solid #e5e7eb; }
+      .insight-contenido .insight-imagenes-fila { display: flex; flex-wrap: wrap; gap: 1.25rem; margin: 1.25rem 0; align-items: flex-start; }
       .insight-contenido .insight-imagenes-fila .insight-imagen { flex: 1 1 280px; max-width: 100%; margin: 0; }
       .sidebar-insights { margin-bottom: 0; }
       .sidebar-insights .shiny-options-group { display: flex; flex-direction: column; gap: 0; }
       .sidebar-insights .radio { margin: 0; }
       .sidebar-insights input[type='radio'] { display: none; }
       .sidebar-insights .radio label {
-        padding: 0.75rem 0; margin: 0;
+        padding: 0.85rem 0; margin: 0;
         border: none; border-bottom: 1px solid #e2e8f0;
         background: transparent; cursor: pointer; display: block;
-        font-size: 1.25rem; font-weight: 400; color: #475569;
-        transition: color 0.2s ease, font-weight 0.2s ease;
+        font-size: 1.45rem; font-weight: 500; color: #475569;
+        transition: color 0.2s ease, font-weight 0.2s ease; line-height: 1.35;
       }
       .sidebar-insights .radio label:last-of-type { border-bottom: none; }
       .sidebar-insights .radio label:hover { color: #1e293b; }
@@ -171,6 +177,7 @@ ui <- fluidPage(
       .sidebar-insights .radio label:has(input:checked) {
         color: #0d6efd; font-weight: 600; background: transparent;
       }
+      .row > .col-sm-2 .well { max-width: 240px; padding: 1.25rem 1.1rem 1rem 1.1rem; border-radius: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
     "))
   ),
   div(style = "padding: 1rem 1rem 0;"),
@@ -179,7 +186,7 @@ ui <- fluidPage(
   div(id = "main-layout-wrapper",
     sidebarLayout(
       sidebarPanel(
-        width = 3,
+        width = 2,
         conditionalPanel(
           condition = "input.tabs !== 'Insights'",
           div(class = "sidebar-seccion",
@@ -230,7 +237,7 @@ ui <- fluidPage(
     ),
 
     mainPanel(
-      width = 9,
+      width = 10,
       tabsetPanel(
         id = "tabs",
         tabPanel(
@@ -644,7 +651,9 @@ server <- function(input, output, session) {
     if (is.na(n)) n <- 0
     div(class = "card-box",
         h5("Términos distintos en el período"),
-        div(class = "valor", format(as.integer(n), big.mark = ".", decimal.mark = ","))
+        div(class = "valor-fila",
+            div(class = "valor", format(as.integer(n), big.mark = ".", decimal.mark = ","))
+        )
     )
   })
 
@@ -659,8 +668,10 @@ server <- function(input, output, session) {
     }
     div(class = "card-box",
         h5("Término más frecuente"),
-        div(class = "valor", val),
-        p(style = "margin-bottom:0; font-size:0.9em;", sub)
+        div(class = "valor-fila",
+            div(class = "valor", val),
+            span(class = "valor-sub", sub)
+        )
     )
   })
 
