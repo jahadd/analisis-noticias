@@ -61,16 +61,6 @@ Los resultados permiten construir una red de conceptos donde los nodos son térm
 
 ---
 
-### 4. Análisis de sentimiento — `run_sentimiento.R`
-
-Cada artículo se clasifica en tres categorías: **positivo**, **neutral** o **negativo**. El análisis usa el titular junto con los primeros 5.000 caracteres del cuerpo del artículo como input.
-
-- **Método principal:** modelo de lenguaje `qwen2.5:3b` ejecutado localmente vía Ollama. El modelo recibe el texto y devuelve una clasificación directa.
-- **Método alternativo:** si Ollama no está disponible, se aplica el léxico NRC (`syuzhet`) como fallback automático. Este método tiene un sesgo positivo conocido para noticias en español (eventos negativos como terremotos o crisis económicas pueden clasificarse erróneamente como positivos), por lo que se prefiere el modelo LLM cuando está disponible.
-
-El análisis es incremental: solo se procesan artículos que aún no tienen clasificación en la base de datos.
-
----
 
 ## Dashboard
 
