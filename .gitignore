@@ -21,6 +21,13 @@ renv/library/
 *.tmp
 *~
 
+# Datos grandes (ya cargados en PostgreSQL)
+*.parquet
+*.udpipe
+
+# Scripts experimentales / no parte del pipeline
+experimental/
+
 # Base de datos: dumps y copias (los scripts .sql del repo sí se versionan)
 *.dump
 *.backup
