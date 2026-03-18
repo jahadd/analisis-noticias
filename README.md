@@ -1,179 +1,87 @@
 # Análisis de Noticias Chile
 
-Pipeline en R y PostgreSQL para **recolectar**, **analizar** y **visualizar** titulares de 28 medios de comunicación chilenos. Incluye tokenización, frecuencias de términos, detección de entidades, co-ocurrencias, n-gramas y análisis de sentimiento, todo expuesto en un dashboard Shiny de solo lectura.
+Pipeline de recolección y análisis de titulares de **28 medios de comunicación chilenos**, con visualización interactiva en un dashboard web.
 
-**~882.000 artículos** cargados desde 2007 a la fecha (marzo 2026).
+El sistema recolecta noticias diariamente, identifica los términos y entidades más mencionados, detecta relaciones entre conceptos y clasifica el tono editorial — todo visible en un dashboard Shiny de solo lectura.
+
+> **Base de datos y scrapers:** los scripts de scraping y la base de datos de noticias son de autoría de [Bastián Olea](https://github.com/bastianolea/prensa_chile). Este repositorio extiende ese trabajo con una capa de análisis y visualización propia.
+
+---
+
+## ¿Qué hace este proyecto?
+
+1. **Recolecta** titulares de 28 medios chilenos de forma automática y diaria
+2. **Analiza** los términos más mencionados, detecta entidades como políticos, países e instituciones, y encuentra qué palabras aparecen juntas en los mismos titulares
+3. **Clasifica** el tono de cada noticia (positivo / neutral / negativo) usando un modelo de lenguaje local
+4. **Visualiza** todo en un dashboard interactivo con gráficos de evolución, redes de conceptos y comparación entre medios
+
+---
+
+## Fuentes (28 medios)
+
+24 Horas · ADN Radio · Agricultura · Radio BíoBío · CHV Noticias · Ciper · CNN Chile · Cooperativa · Diario Financiero · El Ciudadano · El Desconcierto · El Dínamo · El Mostrador · El Siglo · Emol · Ex-Ante · Izquierda Diario · La Cuarta · La Hora · La Nación · La Tercera · Meganoticias · Publimetro · El Quinto Poder · Radio U. de Chile · RedGol · T13 · The Clinic
+
+---
+
+## Dashboard
+
+El dashboard incluye tres secciones principales:
+
+- **Tendencias** — evolución de términos en el tiempo, top palabras del período y buscador de noticias
+- **Medios** — frecuencia de términos por fuente, red de co-ocurrencias interactiva y tono editorial por medio
+- **Más información** — descripción del proyecto y fuentes de datos
 
 ---
 
 ## Estructura del repositorio
 
 ```
-noticias/
+├── run_pipeline.sh       # Script principal que corre todo el sistema
+├── schema.sql            # Estructura de la base de datos
+├── funciones.R           # Funciones compartidas entre scripts
+├── stopwords.R           # Palabras excluidas del análisis
 │
-├── run_pipeline.sh              # Orquestador principal — punto de entrada
-├── schema.sql                   # Definición completa de la BD (15 tablas)
-├── vaciar_db.sql                # Vaciar tablas derivadas para re-análisis total
-├── funciones.R                  # Librería compartida: DB, scraping, texto
-├── stopwords.R                  # Stopwords centralizadas (fuente única)
-│
-├── analisis/                    # Scripts del pipeline de análisis
-│   ├── run_analisis_ngramas.R       # Bigramas y trigramas de titulares
-│   ├── run_analisis_titulos.R       # Tokenización + frecuencias + entidades
-│   ├── run_analisis_coocurrencia.R  # Red de co-ocurrencias entre términos
-│   └── run_sentimiento.R            # Clasificación de sentimiento (LLM / NRC)
-│
-├── scraping/
-│   └── fuentes/                 # 33 scrapers — uno por fuente/variante
-│
-├── dashboard/
-│   ├── app.R                    # Dashboard Shiny (~1530 líneas, solo lectura)
-│   ├── README.md
-│   └── www/                     # Imágenes estáticas
-│
-├── scripts/
-│   └── cargar_parquet_a_postgres.py  # Carga histórica inicial (ya ejecutada)
-│
-└── docs/
-    ├── ARCHITECTURE.md          # Arquitectura detallada, tablas, decisiones
-    └── plan.md                  # Reporte técnico completo del sistema
+├── analisis/             # Scripts de análisis de texto
+├── scraping/             # Scrapers por fuente (basados en prensa_chile)
+├── dashboard/            # Aplicación Shiny de visualización
+├── scripts/              # Utilidades auxiliares
+└── docs/                 # Documentación técnica
 ```
 
 ---
 
-## Arquitectura general
+## Requisitos técnicos
 
-```
-28 fuentes web
-     │
-     ▼  [33 scrapers R — rvest / chromote / httr2]
-     │
-┌─────────────────────────────┐
-│   noticias  (PostgreSQL)    │  ← fuente única de verdad
-│   ~882k artículos           │
-└─────────────────────────────┘
-     │
-     ├──▶ analisis/run_analisis_ngramas.R       → titulos_ngramas_*
-     ├──▶ analisis/run_analisis_titulos.R       → titulos_terminos_*
-     ├──▶ analisis/run_analisis_coocurrencia.R  → titulos_coocurrencia
-     └──▶ analisis/run_sentimiento.R            → noticias_sentimiento
-                                                        │
-                              dashboard/app.R ◀─────────┘
-                              (solo lectura)
-```
-
-**Principios de diseño:**
-- Todo pre-computado en PostgreSQL — el dashboard no calcula nada
-- Incremental por defecto — cada script procesa solo las fechas nuevas
-- PostgreSQL como fuente única de verdad — sin archivos intermedios
-- Titulares como unidad de análisis; los cuerpos se usan solo para sentimiento
+- **R ≥ 4.2** con los paquetes: `tidytext`, `DBI`, `RPostgres`, `furrr`, `shiny`, `ggplot2`, `plotly`, `visNetwork`
+- **PostgreSQL** como base de datos
+- **Ollama** (opcional) con el modelo `qwen2.5:3b` para clasificación de sentimiento con LLM; si no está disponible, se usa el léxico NRC como alternativa automática
 
 ---
 
-## Requisitos
+## Uso básico
 
-**R ≥ 4.2:**
-```r
-install.packages(c(
-  # análisis
-  "DBI", "RPostgres", "tidytext", "dplyr", "furrr", "future",
-  "tidyr", "purrr", "stringr", "stringi", "digest",
-  # sentimiento
-  "syuzhet",
-  # dashboard
-  "shiny", "pool", "ggplot2", "plotly", "visNetwork"
-))
-```
-
-**PostgreSQL 18+** — base `noticias_chile`, usuario `noticias`. Crear con `schema.sql`.
-
-**Ollama** (opcional) — modelo `qwen2.5:3b` para sentimiento LLM. Si no está disponible, `run_sentimiento.R` usa el léxico NRC de `syuzhet` como fallback.
-
-**Python 3** (opcional) — solo necesario para la carga histórica inicial con `scripts/cargar_parquet_a_postgres.py`.
-
----
-
-## Configuración
-
-Las credenciales se leen desde un archivo `.env` ubicado en la carpeta padre del proyecto (`Paginaweb/.env`). **Este archivo nunca debe subirse al repositorio.**
-
-```env
-PGHOST=localhost
-PGPORT=5432
-PGUSER_NOTICIAS=noticias
-PGPASSWORD_NOTICIAS=tu_password
-PGDATABASE_NOTICIAS=noticias_chile
-```
-
----
-
-## Uso
-
-Todos los comandos se ejecutan desde la **raíz del repositorio** (`noticias/`).
-
-### 1. Crear la base de datos (una vez)
+Configurar las credenciales de base de datos en un archivo `.env` (ver `.env.example`) y ejecutar:
 
 ```bash
-psql -U noticias -d noticias_chile -h localhost -f schema.sql
-```
+# Pipeline completo: scraping + análisis
+./run_pipeline.sh
 
-### 2. Pipeline completo
+# Solo análisis (sin scrapear)
+./run_pipeline.sh --solo-analisis
 
-`run_pipeline.sh` orquesta todo: detecta automáticamente la fecha del último artículo en la BD, calcula cuántos días han pasado, y scrapea solo ese período. Luego corre el análisis incremental.
-
-```bash
-./run_pipeline.sh                   # scraping + análisis
-./run_pipeline.sh --solo-analisis   # solo análisis (sin scraping)
-./run_pipeline.sh --con-historicos  # incluir scrapers históricos
-```
-
-Los logs se guardan en `logs/pipeline_YYYY-MM-DD_HH-MM.log`.
-
-### 3. Scripts de análisis individuales
-
-El orden importa: ngramas debe correr antes que titulos (sus resultados alimentan la detección de compuestos frecuentes).
-
-```bash
-Rscript analisis/run_analisis_ngramas.R
-Rscript analisis/run_analisis_titulos.R
-Rscript analisis/run_analisis_coocurrencia.R
-Rscript analisis/run_sentimiento.R
-```
-
-### 4. Dashboard Shiny
-
-```bash
-Rscript -e "shiny::runApp('dashboard', port = 3838, host = '0.0.0.0')"
-```
-
-Abrir en el navegador: **http://localhost:3838**
-
-El dashboard incluye:
-- **Tendencias** — top términos, evolución temporal, buscador de noticias
-- **Medios** — frecuencias por fuente, red de co-ocurrencias (visNetwork), sentimiento editorial
-- **Más información** — descripción del proyecto y fuentes
-
-### 5. Ejecución automática (cron)
-
-```
-0 6 * * * cd /ruta/a/noticias && /bin/bash run_pipeline.sh >> logs/cron.log 2>&1
+# Lanzar el dashboard
+Rscript -e "shiny::runApp('dashboard', port = 3838)"
 ```
 
 ---
 
-## Fuentes (28 medios)
+## Créditos
 
-24 Horas, ADN Radio, Agricultura, Radio BíoBío, CHV Noticias, Ciper, CNN Chile, Cooperativa, Diario Financiero, El Ciudadano, El Desconcierto, El Dínamo, El Mostrador, El Siglo, Emol, Ex-Ante, Izquierda Diario, La Cuarta, La Hora, La Nación, La Tercera, Meganoticias, Publimetro, El Quinto Poder, Radio U. de Chile, RedGol, T13, The Clinic.
-
----
-
-## Documentación
-
-- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — arquitectura detallada, esquema de BD, patrones de diseño
-- [`docs/plan.md`](docs/plan.md) — reporte técnico completo: todos los scripts, patrones críticos, estado actual
+- **Scraping y base de datos:** [Bastián Olea](https://github.com/bastianolea/prensa_chile) — [`bastianolea/prensa_chile`](https://github.com/bastianolea/prensa_chile)
+- **Análisis y dashboard:** este repositorio
 
 ---
 
 ## Licencia
 
-MIT. Ver [LICENSE](LICENSE). Los datos de noticias dependen de los términos de uso de cada fuente.
+MIT. Los datos de noticias están sujetos a los términos de uso de cada medio.

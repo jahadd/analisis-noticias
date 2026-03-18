@@ -28,10 +28,11 @@ renv/library/
 # Scripts experimentales / no parte del pipeline
 experimental/
 
-# Base de datos: dumps y copias (los scripts .sql del repo sí se versionan)
+# Base de datos: dumps, copias y scripts de uso local
 *.dump
 *.backup
 *.sql.backup
+vaciar_db.sql
 
 # Sistema operativo
 .DS_Store
