@@ -23,9 +23,27 @@ El sistema recolecta noticias diariamente, identifica los términos y entidades 
 
 ---
 
+## Scripts de análisis
+
+Los scripts viven en la carpeta `analisis/` y se ejecutan en este orden dentro del pipeline:
+
+### `run_analisis_ngramas.R`
+Extrae bigramas y trigramas de los titulares (pares y tríos de palabras que aparecen juntas). Estos resultados alimentan el siguiente paso para detectar expresiones compuestas frecuentes como "alerta roja" o "derechos humanos".
+
+### `run_analisis_titulos.R`
+Tokeniza todos los titulares y cuenta la frecuencia de cada término por día y por medio. Antes de contar, detecta y unifica entidades compuestas (nombres de políticos, países, instituciones, partidos) para que "Gabriel Boric" cuente como una sola entidad y no como dos palabras sueltas. Usa procesamiento paralelo para manejar el volumen de ~882.000 artículos.
+
+### `run_analisis_coocurrencia.R`
+Para cada titular, calcula qué pares de términos aparecen juntos. Esto permite construir una red de conceptos que muestra qué palabras tienden a aparecer en el mismo contexto.
+
+### `run_sentimiento.R`
+Clasifica cada artículo como positivo, neutral o negativo. Usa un modelo de lenguaje local vía Ollama (`qwen2.5:3b`) como método principal, con el léxico NRC como alternativa automática si Ollama no está disponible.
+
+---
+
 ## Dashboard
 
-El dashboard incluye tres secciones principales:
+El dashboard (`dashboard/app.R`) consulta los resultados pre-calculados en PostgreSQL — no realiza cálculos al vuelo. Incluye tres secciones:
 
 - **Tendencias** — evolución de términos en el tiempo, top palabras del período y buscador de noticias
 - **Medios** — frecuencia de términos por fuente, red de co-ocurrencias interactiva y tono editorial por medio
@@ -36,16 +54,16 @@ El dashboard incluye tres secciones principales:
 ## Estructura del repositorio
 
 ```
-├── run_pipeline.sh       # Script principal que corre todo el sistema
-├── schema.sql            # Estructura de la base de datos
-├── funciones.R           # Funciones compartidas entre scripts
-├── stopwords.R           # Palabras excluidas del análisis
+├── run_pipeline.sh       # Orquestador principal: scraping + análisis
+├── schema.sql            # Estructura de la base de datos (15 tablas)
+├── funciones.R           # Funciones compartidas entre todos los scripts
+├── stopwords.R           # Palabras excluidas del análisis (artículos, preposiciones, etc.)
 │
-├── analisis/             # Scripts de análisis de texto
-├── scraping/             # Scrapers por fuente (basados en prensa_chile)
+├── analisis/             # Scripts de análisis (ver detalle arriba)
+├── scraping/             # Scrapers por fuente, basados en prensa_chile
 ├── dashboard/            # Aplicación Shiny de visualización
-├── scripts/              # Utilidades auxiliares
-└── docs/                 # Documentación técnica
+├── scripts/              # Utilidades auxiliares (carga histórica)
+└── docs/                 # Documentación técnica detallada
 ```
 
 ---
@@ -54,7 +72,7 @@ El dashboard incluye tres secciones principales:
 
 - **R ≥ 4.2** con los paquetes: `tidytext`, `DBI`, `RPostgres`, `furrr`, `shiny`, `ggplot2`, `plotly`, `visNetwork`
 - **PostgreSQL** como base de datos
-- **Ollama** (opcional) con el modelo `qwen2.5:3b` para clasificación de sentimiento con LLM; si no está disponible, se usa el léxico NRC como alternativa automática
+- **Ollama** (opcional) con el modelo `qwen2.5:3b` para clasificación de sentimiento con LLM; si no está disponible, se usa el léxico NRC de forma automática
 
 ---
 
