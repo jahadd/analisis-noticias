@@ -2,7 +2,7 @@
 
 Pipeline de recolección y análisis de titulares de **28 medios de comunicación chilenos**, con visualización interactiva en un dashboard web.
 
-El sistema recolecta noticias diariamente, identifica los términos y entidades más mencionados, detecta relaciones entre conceptos y clasifica el tono editorial — todo visible en un dashboard Shiny de solo lectura.
+El sistema recolecta noticias diariamente, procesa los titulares con técnicas de procesamiento de lenguaje natural (NLP), y almacena los resultados en una base de datos PostgreSQL que alimenta un dashboard de solo lectura.
 
 > **Base de datos y scrapers:** los scripts de scraping y la base de datos de noticias son de autoría de [Bastián Olea](https://github.com/bastianolea/prensa_chile). Este repositorio extiende ese trabajo con una capa de análisis y visualización propia.
 
@@ -10,10 +10,10 @@ El sistema recolecta noticias diariamente, identifica los términos y entidades 
 
 ## ¿Qué hace este proyecto?
 
-1. **Recolecta** titulares de 28 medios chilenos de forma automática y diaria
-2. **Analiza** los términos más mencionados, detecta entidades como políticos, países e instituciones, y encuentra qué palabras aparecen juntas en los mismos titulares
-3. **Clasifica** el tono de cada noticia (positivo / neutral / negativo) usando un modelo de lenguaje local
-4. **Visualiza** todo en un dashboard interactivo con gráficos de evolución, redes de conceptos y comparación entre medios
+1. **Recolecta** titulares de 28 medios chilenos de forma automática y diaria mediante scrapers web
+2. **Procesa** los titulares con tokenización, detección de entidades y análisis de co-ocurrencias
+3. **Clasifica** el tono de cada noticia (positivo / neutral / negativo) mediante un modelo de lenguaje
+4. **Visualiza** los resultados en un dashboard interactivo con gráficos de evolución temporal, redes de conceptos y comparación entre medios
 
 ---
 
@@ -23,31 +23,62 @@ El sistema recolecta noticias diariamente, identifica los términos y entidades 
 
 ---
 
-## Scripts de análisis
+## Metodología de análisis
 
-Los scripts viven en la carpeta `analisis/` y se ejecutan en este orden dentro del pipeline:
+El análisis opera exclusivamente sobre **titulares** de noticias, que constituyen la unidad de observación. Los cuerpos de los artículos se usan únicamente como insumo para el análisis de sentimiento. Todos los resultados se pre-calculan y almacenan en PostgreSQL; el dashboard no realiza cálculos al vuelo.
 
-### `run_analisis_ngramas.R`
-Extrae bigramas y trigramas de los titulares (pares y tríos de palabras que aparecen juntas). Estos resultados alimentan el siguiente paso para detectar expresiones compuestas frecuentes como "alerta roja" o "derechos humanos".
+Los scripts viven en `analisis/` y se ejecutan en el siguiente orden:
 
-### `run_analisis_titulos.R`
-Tokeniza todos los titulares y cuenta la frecuencia de cada término por día y por medio. Antes de contar, detecta y unifica entidades compuestas (nombres de políticos, países, instituciones, partidos) para que "Gabriel Boric" cuente como una sola entidad y no como dos palabras sueltas. Usa procesamiento paralelo para manejar el volumen de ~882.000 artículos.
+---
 
-### `run_analisis_coocurrencia.R`
-Para cada titular, calcula qué pares de términos aparecen juntos. Esto permite construir una red de conceptos que muestra qué palabras tienden a aparecer en el mismo contexto.
+### 1. Extracción de n-gramas — `run_analisis_ngramas.R`
 
-### `run_sentimiento.R`
-Clasifica cada artículo como positivo, neutral o negativo. Usa un modelo de lenguaje local vía Ollama (`qwen2.5:3b`) como método principal, con el léxico NRC como alternativa automática si Ollama no está disponible.
+Se extraen **bigramas** (pares de palabras) y **trigramas** (tríos de palabras) de cada titular mediante tokenización secuencial. Se filtran las combinaciones que contengan stopwords o tokens de menos de 3 caracteres. El resultado es un conteo de frecuencia de cada n-grama por día y por medio, almacenado en la base de datos.
+
+Estos resultados cumplen una función metodológica doble: son consultables directamente en el dashboard, y alimentan el paso siguiente para la detección automática de entidades compuestas.
+
+---
+
+### 2. Frecuencia de términos y detección de entidades — `run_analisis_titulos.R`
+
+Se tokeniza cada titular usando `tidytext` y se aplica un proceso de **normalización y unificación de entidades** antes del conteo:
+
+- **Entidades curadas manualmente:** un diccionario de ~200 expresiones compuestas conocidas (nombres de políticos, países, instituciones, partidos, ministerios) se fusionan en un único token antes de contar. Por ejemplo, "Gabriel Boric", "Estados Unidos" o "Banco Central" se tratan como una sola unidad léxica.
+- **Entidades detectadas automáticamente:** se identifican los n-gramas con 50 o más apariciones históricas totales en la base de datos. Aquellos que no sean sub-expresiones de entidades ya conocidas se incorporan también como tokens unificados. Se aplica normalización de plurales para evitar duplicados ("incendios forestales" → "incendio forestal").
+- **Canonicalización de nombres:** apellidos frecuentes se mapean a su nombre completo canónico ("boric" → "Gabriel Boric", "kast" → "José Antonio Kast").
+
+Finalmente, se eliminan stopwords y se cuenta la frecuencia de cada término por día y por medio. El procesamiento se paraleliza en 4 workers con chunks de 90 días para manejar el volumen de ~882.000 artículos.
+
+---
+
+### 3. Análisis de co-ocurrencia — `run_analisis_coocurrencia.R`
+
+Para cada titular se generan todos los **pares posibles de términos** que aparecen en él (`combn(tokens, 2)`), aplicando previamente el mismo proceso de normalización y detección de entidades que en el paso anterior. Se agrega el número de co-apariciones por par, fecha y medio.
+
+El orden canónico de cada par (término A, término B) se impone mediante `LEAST()/GREATEST()` en SQL —no en R— para evitar inconsistencias de ordenamiento entre el entorno R y PostgreSQL con caracteres acentuados.
+
+Los resultados permiten construir una red de conceptos donde los nodos son términos y las aristas representan la frecuencia con que dos términos aparecen juntos en titulares.
+
+---
+
+### 4. Análisis de sentimiento — `run_sentimiento.R`
+
+Cada artículo se clasifica en tres categorías: **positivo**, **neutral** o **negativo**. El análisis usa el titular junto con los primeros 5.000 caracteres del cuerpo del artículo como input.
+
+- **Método principal:** modelo de lenguaje `qwen2.5:3b` ejecutado localmente vía Ollama. El modelo recibe el texto y devuelve una clasificación directa.
+- **Método alternativo:** si Ollama no está disponible, se aplica el léxico NRC (`syuzhet`) como fallback automático. Este método tiene un sesgo positivo conocido para noticias en español (eventos negativos como terremotos o crisis económicas pueden clasificarse erróneamente como positivos), por lo que se prefiere el modelo LLM cuando está disponible.
+
+El análisis es incremental: solo se procesan artículos que aún no tienen clasificación en la base de datos.
 
 ---
 
 ## Dashboard
 
-El dashboard (`dashboard/app.R`) consulta los resultados pre-calculados en PostgreSQL — no realiza cálculos al vuelo. Incluye tres secciones:
+El dashboard (`dashboard/app.R`) consulta los resultados pre-calculados directamente desde PostgreSQL. Incluye tres secciones:
 
-- **Tendencias** — evolución de términos en el tiempo, top palabras del período y buscador de noticias
-- **Medios** — frecuencia de términos por fuente, red de co-ocurrencias interactiva y tono editorial por medio
-- **Más información** — descripción del proyecto y fuentes de datos
+- **Tendencias** — evolución temporal de términos seleccionados, ranking de los 30 términos más frecuentes en el período y buscador de noticias por palabra clave
+- **Medios** — comparación de frecuencias entre fuentes, red de co-ocurrencias interactiva (visNetwork) y distribución del tono editorial por medio
+- **Más información** — descripción del proyecto y listado de fuentes
 
 ---
 
@@ -57,12 +88,12 @@ El dashboard (`dashboard/app.R`) consulta los resultados pre-calculados en Postg
 ├── run_pipeline.sh       # Orquestador principal: scraping + análisis
 ├── schema.sql            # Estructura de la base de datos (15 tablas)
 ├── funciones.R           # Funciones compartidas entre todos los scripts
-├── stopwords.R           # Palabras excluidas del análisis (artículos, preposiciones, etc.)
+├── stopwords.R           # Palabras excluidas del análisis
 │
-├── analisis/             # Scripts de análisis (ver detalle arriba)
+├── analisis/             # Scripts de análisis (ver metodología arriba)
 ├── scraping/             # Scrapers por fuente, basados en prensa_chile
 ├── dashboard/            # Aplicación Shiny de visualización
-├── scripts/              # Utilidades auxiliares (carga histórica)
+├── scripts/              # Utilidades auxiliares
 └── docs/                 # Documentación técnica detallada
 ```
 
@@ -72,7 +103,7 @@ El dashboard (`dashboard/app.R`) consulta los resultados pre-calculados en Postg
 
 - **R ≥ 4.2** con los paquetes: `tidytext`, `DBI`, `RPostgres`, `furrr`, `shiny`, `ggplot2`, `plotly`, `visNetwork`
 - **PostgreSQL** como base de datos
-- **Ollama** (opcional) con el modelo `qwen2.5:3b` para clasificación de sentimiento con LLM; si no está disponible, se usa el léxico NRC de forma automática
+- **Ollama** (opcional) con el modelo `qwen2.5:3b` para clasificación de sentimiento; si no está disponible se usa el léxico NRC de forma automática
 
 ---
 
