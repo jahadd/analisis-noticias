@@ -381,6 +381,7 @@ ui <- fluidPage(
           end = Sys.Date(),
           min = as.Date("2018-01-01"),
           max = Sys.Date(),
+          format = "yyyy-mm-dd",
           language = "es",
           separator = " a "
         ),
@@ -410,15 +411,6 @@ ui <- fluidPage(
           condition = "input.tabs === 'Más información'",
           div(class = "sidebar-seccion sidebar-insights",
             tags$p(style = "font-size:0.85em; color:#6c757d; padding: 4px 8px;", "Detalles técnicos del proyecto.")
-          )
-        ),
-        conditionalPanel(
-          condition = "input.tabs === 'Medios' && input.tabs_medios === 'Tono editorial'",
-          div(class = "sidebar-seccion", style = "padding-top: 0.5rem;",
-            tags$label(class = "control-label", "Tipo de actores"),
-            checkboxGroupInput("tipo_actor_filtro", label = NULL,
-              choices = c("Manual" = "manual", "Auto-detectado" = "auto"),
-              selected = c("manual", "auto"), inline = TRUE)
           )
         ),
         conditionalPanel(
@@ -484,17 +476,6 @@ ui <- fluidPage(
             div(style = "margin-top: 65rem; padding-top: 1rem; border-top: 1px solid #dee2e6;",
               tags$label(class = "control-label", style = "display: block; margin-bottom: 6px; font-weight: 600;", "Medios en el gráfico"),
               uiOutput("selector_medios_evol_volumen")
-            )
-          )
-        ),
-        conditionalPanel(
-          condition = "input.tabs === 'Medios' && input.tabs_medios === 'Tono editorial'",
-          div(class = "sidebar-medio-destacados",
-            div(style = "margin-top: 30rem; padding-top: 1rem; border-top: 1px solid #dee2e6;",
-              tags$label(class = "control-label", style = "display: block; margin-bottom: 6px; font-weight: 600;",
-                "Medio — actores políticos"),
-              selectInput("medio_actor_sentimiento", label = NULL,
-                choices = NULL, selected = NULL, width = "100%")
             )
           )
         ),
@@ -585,16 +566,6 @@ ui <- fluidPage(
               p(class = "small-metric", "Términos que aparecen en el mismo titular con frecuencia. Cuanto más grueso el nodo, más conexiones tiene."),
               plotlyOutput("red_coocurrencia_plotly", height = "500px")
             ),
-            tabPanel(
-              "Tono editorial",
-              h4("Tono editorial por medio"),
-              p(class = "small-metric", "Distribución del tono de los artículos (positivo, neutral o negativo) por medio en el período seleccionado."),
-              plotlyOutput("grafico_sentimiento_por_fuente", height = "420px"),
-              hr(style = "margin: 2rem 0;"),
-              h4("Tono editorial por actor político"),
-              p(class = "small-metric", "Sentimiento de los artículos que mencionan a cada actor político en el medio seleccionado a la izquierda. Requiere ejecutar run_actores_sentimiento.R."),
-              plotlyOutput("grafico_sentimiento_por_actor", height = "620px")
-            )
           )
         ),
         tabPanel(
@@ -702,8 +673,14 @@ server <- function(input, output, session) {
   # por_ano: > 2 años → vista año a año; ≤ 2 años → vista mes a mes
   fechas <- reactive({
     req(input$fechas)
-    start <- as.Date(input$fechas[1])
-    end   <- as.Date(input$fechas[2])
+    parse_fecha <- function(x) {
+      d <- suppressWarnings(as.Date(x))
+      if (!is.na(d)) return(d)
+      suppressWarnings(as.Date(x, format = "%d/%m/%Y"))
+    }
+    start <- parse_fecha(input$fechas[1])
+    end   <- parse_fecha(input$fechas[2])
+    req(!is.na(start), !is.na(end))
     anos  <- as.numeric(difftime(end, start, units = "days")) / 365.25
     list(start = start, end = end, anos = anos, por_ano = anos > 2)
   })
@@ -837,11 +814,14 @@ server <- function(input, output, session) {
     busq <- trimws(if (is.null(input$busqueda_titulo)) "" else input$busqueda_titulo)
     medio <- if (is.null(input$filtro_medio_noticias) || input$filtro_medio_noticias == "Todos") NULL else input$filtro_medio_noticias
     filtro_medio_sql <- if (!is.null(medio)) " AND fuente = $3" else ""
-    filtro_busq_sql  <- if (nchar(busq) > 0L) paste0(" AND titulo ILIKE $", if (!is.null(medio)) 4L else 3L) else ""
+    filtro_busq_sql  <- if (nchar(busq) > 0L) paste0(" AND titulo ~* $", if (!is.null(medio)) 4L else 3L) else ""
     q <- paste0("SELECT COUNT(*) AS n FROM noticias WHERE fecha >= $1 AND fecha <= $2", filtro_medio_sql, filtro_busq_sql)
     params <- list(start, f$end)
     if (!is.null(medio)) params <- c(params, list(medio))
-    if (nchar(busq) > 0L) params <- c(params, list(paste0("%", busq, "%")))
+    if (nchar(busq) > 0L) {
+      busq_esc <- gsub("([.+*?\\[\\](){}|^$\\\\])", "\\\\\\1", busq, perl = TRUE)
+      params <- c(params, list(paste0("\\y", busq_esc, "\\y")))
+    }
     out <- dbGetQuery(pool, q, params = params)
     as.integer(as.numeric(out$n))
   })
@@ -871,7 +851,7 @@ server <- function(input, output, session) {
     # Construir cláusulas dinámicamente
     filtro_medio_sql <- if (!is.null(medio)) " AND fuente = $3" else ""
     idx_busq <- if (!is.null(medio)) 4L else 3L
-    filtro_busq_sql  <- if (nchar(busq) > 0L) paste0(" AND titulo ILIKE $", idx_busq) else ""
+    filtro_busq_sql  <- if (nchar(busq) > 0L) paste0(" AND titulo ~* $", idx_busq) else ""
     idx_offset <- idx_busq + if (nchar(busq) > 0L) 1L else 0L
     q <- paste0(
       "SELECT titulo, fecha, fuente AS medio, url FROM noticias",
@@ -882,7 +862,10 @@ server <- function(input, output, session) {
     )
     params <- list(start, f$end)
     if (!is.null(medio)) params <- c(params, list(medio))
-    if (nchar(busq) > 0L) params <- c(params, list(paste0("%", busq, "%")))
+    if (nchar(busq) > 0L) {
+      busq_esc <- gsub("([.+*?\\[\\](){}|^$\\\\])", "\\\\\\1", busq, perl = TRUE)
+      params <- c(params, list(paste0("\\y", busq_esc, "\\y")))
+    }
     params <- c(params, list((pg - 1L) * 5L))
     dbGetQuery(pool, q, params = params)
   })
@@ -994,7 +977,7 @@ server <- function(input, output, session) {
         xaxis = list(title = "Año", tickvals = sort(unique(d$periodo)), zeroline = FALSE, showgrid = TRUE),
         yaxis = list(title = "Noticias publicadas", zeroline = FALSE, showgrid = TRUE),
         legend = list(orientation = "h", y = -0.2, x = 0.5, xanchor = "center", yanchor = "top"),
-        margin = list(b = 80, t = 30, l = 60, r = 30),
+        margin = list(b = 130, t = 30, l = 60, r = 30),
         plot_bgcolor = "#fff", paper_bgcolor = "#fff"
       )
     } else {
@@ -1022,7 +1005,7 @@ server <- function(input, output, session) {
           zeroline = FALSE, showgrid = TRUE),
         yaxis = list(title = "Noticias publicadas", zeroline = FALSE, showgrid = TRUE),
         legend = list(orientation = "h", y = -0.35, x = 0.5, xanchor = "center", yanchor = "top"),
-        margin = list(b = 130, t = 30, l = 60, r = 30),
+        margin = list(b = 170, t = 30, l = 60, r = 30),
         plot_bgcolor = "#fff", paper_bgcolor = "#fff"
       )
     }
@@ -1457,7 +1440,7 @@ server <- function(input, output, session) {
         xaxis = list(title = "Año", tickvals = anos, zeroline = FALSE, showgrid = TRUE),
         yaxis = list(title = "Frecuencia", zeroline = FALSE, showgrid = TRUE),
         legend = list(orientation = "h", y = 1.02, x = 0.5, xanchor = "center", yanchor = "bottom", title = list(text = "Término")),
-        margin = list(b = 70, t = 70, l = 60, r = 50)
+        margin = list(b = 70, t = 110, l = 60, r = 50)
       )
     } else {
       # Eje X adaptado al rango: ≤7 días → un tick por día; ≤31 días → cada 2 días; >31 días → mensual
@@ -1502,7 +1485,7 @@ server <- function(input, output, session) {
         ),
         yaxis = list(title = "Frecuencia", zeroline = FALSE, showgrid = TRUE),
         legend = list(orientation = "h", y = 1.02, x = 0.5, xanchor = "center", yanchor = "bottom", title = list(text = "Término")),
-        margin = list(b = 130, t = 70, l = 60, r = 50)
+        margin = list(b = 130, t = 110, l = 60, r = 50)
       )
     }
     p %>% config(displayModeBar = TRUE, locale = "es")
@@ -1718,7 +1701,7 @@ server <- function(input, output, session) {
       xaxis = list(title = "Medio", tickangle = -45, categoryorder = "array", categoryarray = medios_orden),
       yaxis = list(title = metrica_label, zeroline = FALSE),
       legend = list(orientation = "h", y = 1.02, x = 0.5, xanchor = "center", yanchor = "bottom", title = list(text = "Concepto")),
-      margin = list(b = 120, t = 70, l = 60, r = 40)
+      margin = list(b = 120, t = 110, l = 60, r = 40)
     )
     p %>% config(displayModeBar = TRUE, locale = "es")
   })
@@ -2078,12 +2061,12 @@ server <- function(input, output, session) {
           automargin  = TRUE,
           tickfont    = list(size = 12)
         ),
-        legend        = list(orientation = "h", x = 0.3, y = -0.12,
+        legend        = list(orientation = "h", x = 0.5, xanchor = "center", y = -0.12, yanchor = "top",
                              traceorder = "normal",
                              font = list(size = 12)),
         plot_bgcolor  = "white",
         paper_bgcolor = "white",
-        margin        = list(l = 10, r = 20, t = 20, b = 60)
+        margin        = list(l = 10, r = 20, t = 20, b = 100)
       ) %>%
       config(displayModeBar = FALSE)
   })
@@ -2215,7 +2198,7 @@ server <- function(input, output, session) {
         xaxis = list(title = "Año", tickvals = sort(unique(d$ano)), zeroline = FALSE, showgrid = TRUE),
         yaxis = list(title = "Frecuencia", zeroline = FALSE, showgrid = TRUE),
         legend = list(orientation = "h", y = -0.2, x = 0.5, xanchor = "center", yanchor = "top"),
-        margin = list(b = 80, t = 50, l = 60, r = 30),
+        margin = list(b = 130, t = 50, l = 60, r = 30),
         plot_bgcolor = "#fff", paper_bgcolor = "#fff"
       )
     } else {
@@ -2245,7 +2228,7 @@ server <- function(input, output, session) {
           zeroline = FALSE, showgrid = TRUE),
         yaxis = list(title = "Frecuencia", zeroline = FALSE, showgrid = TRUE),
         legend = list(orientation = "h", y = -0.35, x = 0.5, xanchor = "center", yanchor = "top"),
-        margin = list(b = 130, t = 50, l = 60, r = 30),
+        margin = list(b = 170, t = 50, l = 60, r = 30),
         plot_bgcolor = "#fff", paper_bgcolor = "#fff"
       )
     }
@@ -2358,7 +2341,7 @@ server <- function(input, output, session) {
         xaxis = list(title = "Año", tickvals = anos, zeroline = FALSE, showgrid = TRUE),
         yaxis = list(title = "Frecuencia", zeroline = FALSE, showgrid = TRUE),
         legend = list(orientation = "h", y = 1.02, x = 0.5, xanchor = "center", yanchor = "bottom"),
-        margin = list(b = 70, t = 50, l = 60, r = 50)
+        margin = list(b = 70, t = 110, l = 60, r = 50)
       )
     } else {
       rango <- range(d$fecha)
@@ -2387,7 +2370,7 @@ server <- function(input, output, session) {
         ),
         yaxis = list(title = "Frecuencia", zeroline = FALSE, showgrid = TRUE),
         legend = list(orientation = "h", y = 1.02, x = 0.5, xanchor = "center", yanchor = "bottom"),
-        margin = list(b = 130, t = 50, l = 60, r = 50)
+        margin = list(b = 130, t = 110, l = 60, r = 50)
       )
     }
     p %>% config(displayModeBar = TRUE, locale = "es")

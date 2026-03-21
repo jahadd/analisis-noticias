@@ -67,7 +67,7 @@ Los resultados permiten construir una red de conceptos donde los nodos son térm
 El dashboard (`dashboard/app.R`) consulta los resultados pre-calculados directamente desde PostgreSQL. Incluye tres secciones:
 
 - **Tendencias** — evolución temporal de términos seleccionados, ranking de los 30 términos más frecuentes en el período y buscador de noticias por palabra clave
-- **Medios** — comparación de frecuencias entre fuentes, red de co-ocurrencias interactiva (visNetwork) y distribución del tono editorial por medio
+- **Medios** — comparación de frecuencias entre fuentes y red de co-ocurrencias interactiva (visNetwork)
 - **Más información** — descripción del proyecto y listado de fuentes
 
 ---
