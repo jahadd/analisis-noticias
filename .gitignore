@@ -42,3 +42,8 @@ Thumbs.db
 .idea/
 *.swp
 *.swo
+
+# Scripts de scraping por fuente (se ignoran todos salvo el ejemplo CNN)
+scraping/fuentes/scraping_*.r
+scraping/fuentes/scraping_*.R
+!scraping/fuentes/scraping_cnnchile.r
