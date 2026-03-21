@@ -19,7 +19,7 @@ El sistema recolecta noticias diariamente, procesa los titulares con técnicas d
 
 ## Fuentes (28 medios)
 
-24 Horas · ADN Radio · Agricultura · Radio BíoBío · CHV Noticias · Ciper · CNN Chile · Cooperativa · Diario Financiero · El Ciudadano · El Desconcierto · El Dínamo · El Mostrador · El Siglo · Emol · Ex-Ante · Izquierda Diario · La Cuarta · La Hora · La Nación · La Tercera · Meganoticias · Publimetro · El Quinto Poder · Radio U. de Chile · RedGol · T13 · The Clinic
+24 Horas · ADN Radio · Agricultura · Radio BíoBío · CHV Noticias · Ciper · CNN Chile · Cooperativa · Diario Financiero · El Ciudadano · El Desconcierto · El Dínamo · El Mostrador · El Siglo · Emol · Ex-Ante · Izquierda Diario · La Cuarta · La Hora · La Nación · La Tercera · Meganoticias · Publimetro · El Quinto Poder · Radio U. de Chile · RedGol · T13 · The Clinic · Para mayor información acerca de los scripts de scrapping consultar con el autor original.
 
 ---
 

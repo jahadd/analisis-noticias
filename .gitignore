@@ -7,7 +7,7 @@ config.local.*
 .RData
 .Rhistory
 .Rapp.history
-*.Rproj.user/
+.Rproj.user/
 *.Rproj
 .Ruserdata/
 
@@ -47,3 +47,4 @@ Thumbs.db
 scraping/fuentes/scraping_*.r
 scraping/fuentes/scraping_*.R
 !scraping/fuentes/scraping_cnnchile.r
+!scraping/fuentes/scraping_ejemplo.R
