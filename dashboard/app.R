@@ -102,6 +102,10 @@ ui <- fluidPage(
       }
       $(document).on('shiny:connected', function() { setTimeout(syncTabClass, 200); });
       $(document).on('click', '.nav-tabs a', function() { setTimeout(syncTabClass, 50); });
+      // Forzar resize de Plotly al mostrar cualquier tab (corrige gráficos cortados)
+      $(document).on('shown.bs.tab', function() {
+        setTimeout(function() { $(window).trigger('resize'); }, 50);
+      });
     ")),
     tags$style(HTML("
       .dashboard-title {
@@ -114,6 +118,45 @@ ui <- fluidPage(
         margin: 0 0 0.4rem 0;
         padding-bottom: 0.6rem;
         border-bottom: 3px solid #0d6efd;
+      }
+      .titulo-row {
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: 16px;
+        padding-bottom: 0.6rem;
+        border-bottom: 3px solid #0d6efd;
+        margin-bottom: 0.4rem;
+      }
+      .titulo-row .dashboard-title {
+        border-bottom: none !important;
+        padding-bottom: 0 !important;
+        margin-bottom: 0 !important;
+      }
+      .btn-volver-escritorio {
+        display: none;
+      }
+      .standalone .btn-volver-escritorio {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        flex-shrink: 0;
+        background: #1a1a2e;
+        color: #fff !important;
+        border-radius: 6px;
+        padding: 7px 14px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        text-decoration: none !important;
+        letter-spacing: 0.03em;
+        white-space: nowrap;
+        transition: background 0.15s;
+        margin-bottom: 3px;
+      }
+      .btn-volver-escritorio:hover {
+        background: #0d6efd;
+        color: #fff !important;
+        text-decoration: none !important;
       }
       .dashboard-subtitle {
         font-size: 0.95rem;
@@ -361,10 +404,20 @@ ui <- fluidPage(
       .mi-w95-statusbar a { color: #000080; text-decoration: underline; font-size: 16px; }
       .mi-w95-statusbar span { color: #444; margin-left: auto; }
       @media (max-width: 768px) { .mi-w95-grid { grid-template-columns: 1fr; } }
+    ")),
+    tags$script(HTML("
+      (function() {
+        if (window.self === window.top) {
+          document.documentElement.classList.add('standalone');
+        }
+      })();
     "))
   ),
   div(style = "padding: 1rem 1rem 0;"),
-  h1(class = "dashboard-title", "Monitor de Noticias Chile — Seguimiento de tendencias en prensa (2018-2026)"),
+  div(class = "titulo-row",
+    h1(class = "dashboard-title", "Monitor de Noticias Chile — Seguimiento de tendencias en prensa (2018-2026)"),
+    tags$a(href = "/", class = "btn-volver-escritorio", "\u229e Escritorio")
+  ),
   p(class = "dashboard-subtitle", "Análisis de los temas que dominan los titulares de los principales medios chilenos"),
   div(id = "main-layout-wrapper",
     sidebarLayout(
@@ -976,8 +1029,10 @@ server <- function(input, output, session) {
       p <- p %>% layout(
         xaxis = list(title = "Año", tickvals = sort(unique(d$periodo)), zeroline = FALSE, showgrid = TRUE),
         yaxis = list(title = "Noticias publicadas", zeroline = FALSE, showgrid = TRUE),
-        legend = list(orientation = "h", y = -0.2, x = 0.5, xanchor = "center", yanchor = "top"),
-        margin = list(b = 130, t = 30, l = 60, r = 30),
+        legend = list(orientation = "v", x = 0.99, xanchor = "right", y = 0.99, yanchor = "top",
+                      bgcolor = "rgba(255,255,255,0.85)", bordercolor = "#ccc", borderwidth = 1,
+                      font = list(size = 10, family = "Arial, sans-serif"), tracegroupgap = 0),
+        margin = list(b = 50, t = 30, l = 60, r = 30),
         plot_bgcolor = "#fff", paper_bgcolor = "#fff"
       )
     } else {
@@ -1004,8 +1059,10 @@ server <- function(input, output, session) {
           tickangle = -45, tickfont = list(size = 10),
           zeroline = FALSE, showgrid = TRUE),
         yaxis = list(title = "Noticias publicadas", zeroline = FALSE, showgrid = TRUE),
-        legend = list(orientation = "h", y = -0.35, x = 0.5, xanchor = "center", yanchor = "top"),
-        margin = list(b = 170, t = 30, l = 60, r = 30),
+        legend = list(orientation = "v", x = 0.99, xanchor = "right", y = 0.99, yanchor = "top",
+                      bgcolor = "rgba(255,255,255,0.85)", bordercolor = "#ccc", borderwidth = 1,
+                      font = list(size = 10, family = "Arial, sans-serif"), tracegroupgap = 0),
+        margin = list(b = 50, t = 30, l = 60, r = 30),
         plot_bgcolor = "#fff", paper_bgcolor = "#fff"
       )
     }
@@ -1439,8 +1496,11 @@ server <- function(input, output, session) {
       p <- p %>% layout(
         xaxis = list(title = "Año", tickvals = anos, zeroline = FALSE, showgrid = TRUE),
         yaxis = list(title = "Frecuencia", zeroline = FALSE, showgrid = TRUE),
-        legend = list(orientation = "h", y = 1.02, x = 0.5, xanchor = "center", yanchor = "bottom", title = list(text = "Término")),
-        margin = list(b = 70, t = 110, l = 60, r = 50)
+        legend = list(orientation = "v", x = 0.99, xanchor = "right", y = 0.99, yanchor = "top",
+                      bgcolor = "rgba(255,255,255,0.85)", bordercolor = "#ccc", borderwidth = 1,
+                      title = list(text = "Término"), font = list(size = 10, family = "Arial, sans-serif"),
+                      tracegroupgap = 0),
+        margin = list(b = 50, t = 30, l = 60, r = 30)
       )
     } else {
       # Eje X adaptado al rango: ≤7 días → un tick por día; ≤31 días → cada 2 días; >31 días → mensual
@@ -1484,8 +1544,11 @@ server <- function(input, output, session) {
           range = as.numeric(as.POSIXct(rango, tz = "UTC")) * 1000
         ),
         yaxis = list(title = "Frecuencia", zeroline = FALSE, showgrid = TRUE),
-        legend = list(orientation = "h", y = 1.02, x = 0.5, xanchor = "center", yanchor = "bottom", title = list(text = "Término")),
-        margin = list(b = 130, t = 110, l = 60, r = 50)
+        legend = list(orientation = "v", x = 0.99, xanchor = "right", y = 0.99, yanchor = "top",
+                      bgcolor = "rgba(255,255,255,0.85)", bordercolor = "#ccc", borderwidth = 1,
+                      title = list(text = "Término"), font = list(size = 10, family = "Arial, sans-serif"),
+                      tracegroupgap = 0),
+        margin = list(b = 60, t = 30, l = 60, r = 30)
       )
     }
     p %>% config(displayModeBar = TRUE, locale = "es")
@@ -1700,8 +1763,11 @@ server <- function(input, output, session) {
       barmode = "group",
       xaxis = list(title = "Medio", tickangle = -45, categoryorder = "array", categoryarray = medios_orden),
       yaxis = list(title = metrica_label, zeroline = FALSE),
-      legend = list(orientation = "h", y = 1.02, x = 0.5, xanchor = "center", yanchor = "bottom", title = list(text = "Concepto")),
-      margin = list(b = 120, t = 110, l = 60, r = 40)
+      legend = list(orientation = "v", x = 0.99, xanchor = "right", y = 0.99, yanchor = "top",
+                    bgcolor = "rgba(255,255,255,0.85)", bordercolor = "#ccc", borderwidth = 1,
+                    title = list(text = "Concepto"), font = list(size = 10, family = "Arial, sans-serif"),
+                    tracegroupgap = 0),
+      margin = list(b = 80, t = 30, l = 60, r = 30)
     )
     p %>% config(displayModeBar = TRUE, locale = "es")
   })
@@ -1942,8 +2008,11 @@ server <- function(input, output, session) {
       barmode = "stack",
       xaxis = list(title = "Medio", tickangle = -45),
       yaxis = list(title = "Número de artículos", zeroline = FALSE),
-      legend = list(orientation = "h", y = 1.02, x = 0.5, xanchor = "center", yanchor = "bottom", title = list(text = "Sentimiento")),
-      margin = list(b = 120, t = 70, l = 60, r = 40)
+      legend = list(orientation = "v", x = 0.99, xanchor = "right", y = 0.99, yanchor = "top",
+                    bgcolor = "rgba(255,255,255,0.85)", bordercolor = "#ccc", borderwidth = 1,
+                    title = list(text = "Sentimiento"), font = list(size = 10, family = "Arial, sans-serif"),
+                    tracegroupgap = 0),
+      margin = list(b = 60, t = 30, l = 60, r = 30)
     )
     p %>% config(displayModeBar = TRUE, locale = "es")
   })
@@ -2061,12 +2130,13 @@ server <- function(input, output, session) {
           automargin  = TRUE,
           tickfont    = list(size = 12)
         ),
-        legend        = list(orientation = "h", x = 0.5, xanchor = "center", y = -0.12, yanchor = "top",
+        legend        = list(orientation = "h", x = 0.5, xanchor = "center", y = -0.08, yanchor = "top",
                              traceorder = "normal",
-                             font = list(size = 12)),
+                             font = list(size = 10, family = "Arial, sans-serif"),
+                             tracegroupgap = 0),
         plot_bgcolor  = "white",
         paper_bgcolor = "white",
-        margin        = list(l = 10, r = 20, t = 20, b = 100)
+        margin        = list(l = 10, r = 20, t = 20, b = 60)
       ) %>%
       config(displayModeBar = FALSE)
   })
@@ -2197,8 +2267,10 @@ server <- function(input, output, session) {
         title = list(text = paste0("Evolución en \"", medio_sel, "\""), font = list(size = 13), x = 0.5, xanchor = "center"),
         xaxis = list(title = "Año", tickvals = sort(unique(d$ano)), zeroline = FALSE, showgrid = TRUE),
         yaxis = list(title = "Frecuencia", zeroline = FALSE, showgrid = TRUE),
-        legend = list(orientation = "h", y = -0.2, x = 0.5, xanchor = "center", yanchor = "top"),
-        margin = list(b = 130, t = 50, l = 60, r = 30),
+        legend = list(orientation = "v", x = 0.99, xanchor = "right", y = 0.99, yanchor = "top",
+                      bgcolor = "rgba(255,255,255,0.85)", bordercolor = "#ccc", borderwidth = 1,
+                      font = list(size = 10, family = "Arial, sans-serif"), tracegroupgap = 0),
+        margin = list(b = 50, t = 50, l = 60, r = 30),
         plot_bgcolor = "#fff", paper_bgcolor = "#fff"
       )
     } else {
@@ -2227,8 +2299,10 @@ server <- function(input, output, session) {
           tickangle = if (dias_rango <= 31) -25 else -45, tickfont = list(size = 11),
           zeroline = FALSE, showgrid = TRUE),
         yaxis = list(title = "Frecuencia", zeroline = FALSE, showgrid = TRUE),
-        legend = list(orientation = "h", y = -0.35, x = 0.5, xanchor = "center", yanchor = "top"),
-        margin = list(b = 170, t = 50, l = 60, r = 30),
+        legend = list(orientation = "v", x = 0.99, xanchor = "right", y = 0.99, yanchor = "top",
+                      bgcolor = "rgba(255,255,255,0.85)", bordercolor = "#ccc", borderwidth = 1,
+                      font = list(size = 10, family = "Arial, sans-serif"), tracegroupgap = 0),
+        margin = list(b = 60, t = 50, l = 60, r = 30),
         plot_bgcolor = "#fff", paper_bgcolor = "#fff"
       )
     }
@@ -2340,8 +2414,10 @@ server <- function(input, output, session) {
       p <- p %>% layout(
         xaxis = list(title = "Año", tickvals = anos, zeroline = FALSE, showgrid = TRUE),
         yaxis = list(title = "Frecuencia", zeroline = FALSE, showgrid = TRUE),
-        legend = list(orientation = "h", y = 1.02, x = 0.5, xanchor = "center", yanchor = "bottom"),
-        margin = list(b = 70, t = 110, l = 60, r = 50)
+        legend = list(orientation = "v", x = 0.99, xanchor = "right", y = 0.99, yanchor = "top",
+                      bgcolor = "rgba(255,255,255,0.85)", bordercolor = "#ccc", borderwidth = 1,
+                      font = list(size = 10, family = "Arial, sans-serif"), tracegroupgap = 0),
+        margin = list(b = 50, t = 30, l = 60, r = 30)
       )
     } else {
       rango <- range(d$fecha)
@@ -2369,12 +2445,19 @@ server <- function(input, output, session) {
           zeroline = FALSE, showgrid = TRUE
         ),
         yaxis = list(title = "Frecuencia", zeroline = FALSE, showgrid = TRUE),
-        legend = list(orientation = "h", y = 1.02, x = 0.5, xanchor = "center", yanchor = "bottom"),
-        margin = list(b = 130, t = 110, l = 60, r = 50)
+        legend = list(orientation = "v", x = 0.99, xanchor = "right", y = 0.99, yanchor = "top",
+                      bgcolor = "rgba(255,255,255,0.85)", bordercolor = "#ccc", borderwidth = 1,
+                      font = list(size = 10, family = "Arial, sans-serif"), tracegroupgap = 0),
+        margin = list(b = 60, t = 30, l = 60, r = 30)
       )
     }
     p %>% config(displayModeBar = TRUE, locale = "es")
   })
+
+  outputOptions(output, "grafico_evolucion_concepto_por_medio", suspendWhenHidden = FALSE)
+  outputOptions(output, "grafico_evolucion_volumen_por_medio",  suspendWhenHidden = FALSE)
+  outputOptions(output, "grafico_terminos_por_medio",           suspendWhenHidden = FALSE)
+  outputOptions(output, "grafico_evolucion_terminos_por_medio", suspendWhenHidden = FALSE)
 }
 
 # ------------------------------------------------------------------------------
