@@ -26,16 +26,21 @@ for (env_file in env_candidates) {
   if (file.exists(env_file)) {
     env_lines <- readLines(env_file, warn = FALSE)
     for (line in env_lines) {
-      line <- sub("^[[:space:]]*#.*$", "", line)
-      if (!nzchar(trimws(line))) next
-      if (grepl("^PGHOST=", line))       Sys.setenv(PGHOST = sub("^PGHOST=([^[:space:]]+).*", "\\1", line))
-      if (grepl("^PGPORT=", line))      Sys.setenv(PGPORT = sub("^PGPORT=([^[:space:]]+).*", "\\1", line))
-      if (grepl("^PGUSER_NOTICIAS=", line))     Sys.setenv(PGUSER_NOTICIAS = sub("^PGUSER_NOTICIAS=[\"']?([^\"']*)[\"']?$", "\\1", line))
-      if (grepl("^PGPASSWORD_NOTICIAS=", line)) Sys.setenv(PGPASSWORD_NOTICIAS = sub("^PGPASSWORD_NOTICIAS=[\"']?([^\"']*)[\"']?$", "\\1", line))
-      if (grepl("^PGDATABASE_NOTICIAS=", line)) Sys.setenv(PGDATABASE_NOTICIAS = sub("^PGDATABASE_NOTICIAS=[\"']?([^\"']*)[\"']?$", "\\1", line))
-      if (grepl("^PGUSER=", line))      Sys.setenv(PGUSER = sub("^PGUSER=[\"']?([^\"']*)[\"']?$", "\\1", line))
-      if (grepl("^PGPASSWORD=", line))  Sys.setenv(PGPASSWORD = sub("^PGPASSWORD=[\"']?([^\"']*)[\"']?$", "\\1", line))
-      if (grepl("^PGDATABASE=", line))  Sys.setenv(PGDATABASE = sub("^PGDATABASE=[\"']?([^\"']*)[\"']?$", "\\1", line))
+      line <- trimws(line)
+      if (!nzchar(line) || startsWith(line, "#")) next
+      eq_pos <- regexpr("=", line, fixed = TRUE)
+      if (eq_pos < 2L) next
+      key <- substr(line, 1L, eq_pos - 1L)
+      val <- substr(line, eq_pos + 1L, nchar(line))
+      val <- gsub('^["\']|["\']$', "", val)
+      if (key == "PGHOST")               Sys.setenv(PGHOST               = val)
+      if (key == "PGPORT")               Sys.setenv(PGPORT               = val)
+      if (key == "PGUSER_NOTICIAS")      Sys.setenv(PGUSER_NOTICIAS      = val)
+      if (key == "PGPASSWORD_NOTICIAS")  Sys.setenv(PGPASSWORD_NOTICIAS  = val)
+      if (key == "PGDATABASE_NOTICIAS")  Sys.setenv(PGDATABASE_NOTICIAS  = val)
+      if (key == "PGUSER")               Sys.setenv(PGUSER               = val)
+      if (key == "PGPASSWORD")           Sys.setenv(PGPASSWORD           = val)
+      if (key == "PGDATABASE")           Sys.setenv(PGDATABASE           = val)
     }
     break
   }
