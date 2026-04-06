@@ -646,3 +646,42 @@ revisar_scrapeado <- function(enlace) {
   
   return(veredicto)
 }
+
+# chromote helpers ----
+# Inicializa una sesión ChromoteSession compatible con Linux (GCP) y macOS.
+# En Linux agrega --no-sandbox (necesario en entornos sin GUI/root).
+iniciar_chrome <- function() {
+  library(chromote)
+  options(chromote.headless = "new")
+  if (.Platform$OS.type == "unix" && !grepl("darwin", R.version$os, ignore.case = TRUE)) {
+    # Linux (GCP VM): Chrome necesita --no-sandbox
+    chrome_args <- c("--no-sandbox", "--disable-gpu", "--disable-setuid-sandbox",
+                     "--disable-dev-shm-usage")
+    b <- Chromote$new(browser = Chrome$new(args = chrome_args))
+    session <- ChromoteSession$new(parent = b)
+  } else {
+    session <- ChromoteSession$new()
+  }
+  session$Network$setUserAgentOverride(
+    userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/113.0.0.0 Safari/537.36"
+  )
+  session
+}
+
+# Navega a una URL con chromote y espera que cargue, con timeout configurable y reintentos.
+chrome_navegar <- function(chrome, url, timeout = 60, reintentos = 2) {
+  for (intento in seq_len(reintentos)) {
+    tryCatch({
+      chrome$Page$navigate(url)
+      chrome$Page$loadEventFired(timeout = timeout)
+      return(invisible(TRUE))
+    }, error = function(e) {
+      if (intento < reintentos) {
+        message(sprintf("chrome_navegar: reintento %d para %s (%s)", intento, url, conditionMessage(e)))
+        Sys.sleep(3)
+      } else {
+        stop(e)
+      }
+    })
+  }
+}
