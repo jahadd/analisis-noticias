@@ -643,11 +643,14 @@ ui <- fluidPage(
 # ------------------------------------------------------------------------------
 server <- function(input, output, session) {
 
-  pool <- get_pool()
+  message("[DIAG] server() started, pg_password len=", nchar(pg_password), " pg_host=", pg_host)
+  pool <- tryCatch(get_pool(), error = function(e) { message("[DIAG] get_pool() ERROR: ", e$message); NULL })
+  message("[DIAG] pool is ", if (is.null(pool)) "NULL" else "OK")
 
   # Stopwords centralizadas (fuente única: stopwords.R en raíz del proyecto)
-  source("../stopwords.R")
-  STOPWORDS_GRAFICOS <- STOPWORDS
+  tryCatch(source("../stopwords.R"), error = function(e) message("[DIAG] source stopwords ERROR: ", e$message))
+  STOPWORDS_GRAFICOS <- if (exists("STOPWORDS")) STOPWORDS else character(0)
+  message("[DIAG] STOPWORDS_GRAFICOS len=", length(STOPWORDS_GRAFICOS))
 
   # Presets de fechas
   observeEvent(input$preset_7, {
@@ -809,6 +812,7 @@ server <- function(input, output, session) {
     f <- fechas()
     cfg <- tabla_config()
     sw <- all_stopwords()
+    message("[DIAG] top_30_df: fecha=", f$start, " a ", f$end, " sw_len=", length(sw), " pool_null=", is.null(pool))
     ph_dyn <- paste(sprintf("$%d", seq(3L, length.out = length(sw))), collapse = ", ")
     q <- paste0("
       SELECT ", cfg$col_t, " AS termino, SUM(", cfg$col_f, ") AS total
@@ -818,7 +822,11 @@ server <- function(input, output, session) {
       ORDER BY total DESC
       LIMIT 30
     ")
-    out <- dbGetQuery(pool, q, params = c(list(f$start, f$end), as.list(sw)))
+    out <- tryCatch(
+      dbGetQuery(pool, q, params = c(list(f$start, f$end), as.list(sw))),
+      error = function(e) { message("[DIAG] top_30_df dbGetQuery ERROR: ", e$message); data.frame(termino=character(), total=numeric()) }
+    )
+    message("[DIAG] top_30_df rows=", nrow(out))
     if (nrow(out) > 0L) out$total <- as.numeric(as.integer(out$total))
     out
   })
