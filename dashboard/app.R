@@ -63,7 +63,10 @@ get_pool <- function() {
       port = pg_port,
       user = pg_user,
       password = pg_password,
-      dbname = pg_db
+      dbname = pg_db,
+      onCreate = function(con) {
+        tryCatch(dbExecute(con, "SET work_mem = '64MB'"), error = function(e) NULL)
+      }
     )
     con_tmp <- poolCheckout(pool_global)
     tryCatch({
@@ -643,28 +646,11 @@ ui <- fluidPage(
 # ------------------------------------------------------------------------------
 server <- function(input, output, session) {
 
-  message("[DIAG] server() started, pg_password len=", nchar(pg_password), " pg_host=", pg_host)
-  pool <- tryCatch(get_pool(), error = function(e) { message("[DIAG] get_pool() ERROR: ", e$message); NULL })
-  message("[DIAG] pool is ", if (is.null(pool)) "NULL" else "OK")
+  pool <- get_pool()
 
   # Stopwords centralizadas (fuente única: stopwords.R en raíz del proyecto)
-  tryCatch(source("../stopwords.R"), error = function(e) message("[DIAG] source stopwords ERROR: ", e$message))
-  STOPWORDS_GRAFICOS <- if (exists("STOPWORDS")) STOPWORDS else character(0)
-  message("[DIAG] STOPWORDS_GRAFICOS len=", length(STOPWORDS_GRAFICOS))
-
-  # Quick DB connectivity check on session start
-  observe({
-    isolate({
-      if (!is.null(pool)) {
-        tryCatch({
-          n <- dbGetQuery(pool, "SELECT COUNT(*) AS n FROM titulos_terminos_diarios")
-          message("[DIAG] observe DB check: titulos_terminos_diarios rows=", n$n)
-          n2 <- dbGetQuery(pool, "SELECT COUNT(*) AS n FROM titulos_terminos_diarios WHERE fecha >= CURRENT_DATE - 90")
-          message("[DIAG] observe DB check: last-90-days rows=", n2$n)
-        }, error = function(e) message("[DIAG] observe DB check ERROR: ", e$message))
-      }
-    })
-  })
+  source("../stopwords.R")
+  STOPWORDS_GRAFICOS <- STOPWORDS
 
   # Presets de fechas
   observeEvent(input$preset_7, {
@@ -706,9 +692,15 @@ server <- function(input, output, session) {
   })
 
   tabla_config <- reactive({
-    list(tabla = "titulos_terminos_diarios", col_t = "termino", col_f = "frecuencia",
-         filtro_tipo = "", tiene_pm = TRUE,
-         tabla_pm = "titulos_terminos_por_medio", col_t_pm = "termino", col_f_pm = "frecuencia", filtro_tipo_pm = "")
+    f <- fechas()
+    usa_mensual <- as.numeric(difftime(f$end, f$start, units = "days")) > 180
+    list(
+      tabla      = if (usa_mensual) "mv_terminos_mensuales"          else "titulos_terminos_diarios",
+      col_t      = "termino", col_f = "frecuencia", filtro_tipo = "",
+      tiene_pm   = TRUE,
+      tabla_pm   = if (usa_mensual) "mv_terminos_por_medio_mensuales" else "titulos_terminos_por_medio",
+      col_t_pm   = "termino", col_f_pm = "frecuencia", filtro_tipo_pm = ""
+    )
   })
 
   # Reverse lookup: canonical lema → variants that map to it (for showing chips in search)
@@ -826,7 +818,6 @@ server <- function(input, output, session) {
     f <- fechas()
     cfg <- tabla_config()
     sw <- all_stopwords()
-    message("[DIAG] top_30_df: fecha=", f$start, " a ", f$end, " sw_len=", length(sw), " pool_null=", is.null(pool))
     ph_dyn <- paste(sprintf("$%d", seq(3L, length.out = length(sw))), collapse = ", ")
     q <- paste0("
       SELECT ", cfg$col_t, " AS termino, SUM(", cfg$col_f, ") AS total
@@ -836,11 +827,7 @@ server <- function(input, output, session) {
       ORDER BY total DESC
       LIMIT 30
     ")
-    out <- tryCatch(
-      dbGetQuery(pool, q, params = c(list(f$start, f$end), as.list(sw))),
-      error = function(e) { message("[DIAG] top_30_df dbGetQuery ERROR: ", e$message); data.frame(termino=character(), total=numeric()) }
-    )
-    message("[DIAG] top_30_df rows=", nrow(out))
+    out <- dbGetQuery(pool, q, params = c(list(f$start, f$end), as.list(sw)))
     if (nrow(out) > 0L) out$total <- as.numeric(as.integer(out$total))
     out
   })
@@ -2362,7 +2349,7 @@ server <- function(input, output, session) {
       hovertemplate = "<b>%{label}</b><br>Frecuencia: %{value:,.0f}<br>%{percent}<extra></extra>",
       marker = list(
         colors = colores_pie[seq_len(nrow(d))],
-        line = list(color = "#fff", width = 1.5)
+        line = list(color = "#ffffff", width = 1.5)
       ),
       showlegend = FALSE
     ) %>%

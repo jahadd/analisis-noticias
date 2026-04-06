@@ -239,6 +239,14 @@ run_r "analisis/run_analisis_ngramas.R"       "Ngramas"
 run_r "analisis/run_analisis_titulos.R"       "Titulos"
 run_r "analisis/run_analisis_coocurrencia.R"  "Coocurrencia"
 
+# Refrescar vistas materializadas mensuales (para queries rápidas en el dashboard)
+log "--- Refrescando vistas materializadas mensuales ---"
+if [[ -n "$_PG_PASS" ]]; then
+  PGPASSWORD="$_PG_PASS" psql -h "$_PG_HOST" -p "$_PG_PORT" -U "$_PG_USER" -d "$_PG_DB" \
+    -c "REFRESH MATERIALIZED VIEW mv_terminos_mensuales; REFRESH MATERIALIZED VIEW mv_terminos_por_medio_mensuales;" \
+    2>&1 && log "OK vistas materializadas" || log "WARN: fallo al refrescar vistas materializadas"
+fi
+
 # ------------------------------------------------------------------------------
 # Resumen
 # ------------------------------------------------------------------------------
