@@ -1047,7 +1047,7 @@ server <- function(input, output, session) {
                       bgcolor = "rgba(255,255,255,0.85)", bordercolor = "#ccc", borderwidth = 1,
                       font = list(size = 10, family = "Arial, sans-serif"), tracegroupgap = 0),
         margin = list(b = 50, t = 30, l = 60, r = 30),
-        plot_bgcolor = "#fff", paper_bgcolor = "#fff"
+        plot_bgcolor = "#ffffff", paper_bgcolor = "#ffffff"
       )
     } else {
       d$periodo <- as.Date(d$periodo)
@@ -1077,7 +1077,7 @@ server <- function(input, output, session) {
                       bgcolor = "rgba(255,255,255,0.85)", bordercolor = "#ccc", borderwidth = 1,
                       font = list(size = 10, family = "Arial, sans-serif"), tracegroupgap = 0),
         margin = list(b = 50, t = 30, l = 60, r = 30),
-        plot_bgcolor = "#fff", paper_bgcolor = "#fff"
+        plot_bgcolor = "#ffffff", paper_bgcolor = "#ffffff"
       )
     }
     p %>% config(displayModeBar = TRUE, locale = "es")
@@ -1594,8 +1594,8 @@ server <- function(input, output, session) {
       xaxis = list(title = "Frecuencia total", zeroline = FALSE, showgrid = TRUE, gridcolor = "#eee"),
       yaxis = list(title = NULL, tickfont = list(size = 11)),
       margin = list(l = 140, r = 30, t = 20, b = 50),
-      plot_bgcolor = "#fff",
-      paper_bgcolor = "#fff"
+      plot_bgcolor = "#ffffff",
+      paper_bgcolor = "#ffffff"
     ) %>%
     config(displayModeBar = TRUE, locale = "es")
   })
@@ -1816,8 +1816,8 @@ server <- function(input, output, session) {
       xaxis = list(title = "Número de noticias", zeroline = FALSE, showgrid = TRUE, gridcolor = "#eee"),
       yaxis = list(title = NULL, tickfont = list(size = 11)),
       margin = list(l = 130, r = 30, t = 20, b = 50),
-      plot_bgcolor = "#fff",
-      paper_bgcolor = "#fff"
+      plot_bgcolor = "#ffffff",
+      paper_bgcolor = "#ffffff"
     ) %>%
     config(displayModeBar = TRUE, locale = "es")
   })
@@ -2285,7 +2285,7 @@ server <- function(input, output, session) {
                       bgcolor = "rgba(255,255,255,0.85)", bordercolor = "#ccc", borderwidth = 1,
                       font = list(size = 10, family = "Arial, sans-serif"), tracegroupgap = 0),
         margin = list(b = 50, t = 50, l = 60, r = 30),
-        plot_bgcolor = "#fff", paper_bgcolor = "#fff"
+        plot_bgcolor = "#ffffff", paper_bgcolor = "#ffffff"
       )
     } else {
       rango <- range(d$fecha)
@@ -2317,7 +2317,7 @@ server <- function(input, output, session) {
                       bgcolor = "rgba(255,255,255,0.85)", bordercolor = "#ccc", borderwidth = 1,
                       font = list(size = 10, family = "Arial, sans-serif"), tracegroupgap = 0),
         margin = list(b = 60, t = 50, l = 60, r = 30),
-        plot_bgcolor = "#fff", paper_bgcolor = "#fff"
+        plot_bgcolor = "#ffffff", paper_bgcolor = "#ffffff"
       )
     }
     p %>% config(displayModeBar = TRUE, locale = "es")
@@ -2359,7 +2359,7 @@ server <- function(input, output, session) {
         font = list(size = 13), x = 0.5, xanchor = "center"
       ),
       margin = list(l = 20, r = 20, t = 50, b = 20),
-      paper_bgcolor = "#fff"
+      paper_bgcolor = "#ffffff"
     ) %>%
     config(displayModeBar = TRUE, locale = "es")
   })
