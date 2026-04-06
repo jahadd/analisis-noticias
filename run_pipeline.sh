@@ -235,9 +235,9 @@ fi
 log ""
 log "=== FASE 2: ANÁLISIS ==="
 
-run_r "analisis/run_analisis_ngramas.R"       "Ngramas"
-run_r "analisis/run_analisis_titulos.R"       "Titulos"
-run_r "analisis/run_analisis_coocurrencia.R"  "Coocurrencia"
+run_r "analisis/run_analisis_ngramas.R"       "Ngramas"       || true
+run_r "analisis/run_analisis_titulos.R"       "Titulos"       || true
+run_r "analisis/run_analisis_coocurrencia.R"  "Coocurrencia"  || true
 
 # Refrescar vistas materializadas mensuales (para queries rápidas en el dashboard)
 log "--- Refrescando vistas materializadas mensuales ---"
