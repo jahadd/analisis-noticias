@@ -652,6 +652,20 @@ server <- function(input, output, session) {
   STOPWORDS_GRAFICOS <- if (exists("STOPWORDS")) STOPWORDS else character(0)
   message("[DIAG] STOPWORDS_GRAFICOS len=", length(STOPWORDS_GRAFICOS))
 
+  # Quick DB connectivity check on session start
+  observe({
+    isolate({
+      if (!is.null(pool)) {
+        tryCatch({
+          n <- dbGetQuery(pool, "SELECT COUNT(*) AS n FROM titulos_terminos_diarios")
+          message("[DIAG] observe DB check: titulos_terminos_diarios rows=", n$n)
+          n2 <- dbGetQuery(pool, "SELECT COUNT(*) AS n FROM titulos_terminos_diarios WHERE fecha >= CURRENT_DATE - 90")
+          message("[DIAG] observe DB check: last-90-days rows=", n2$n)
+        }, error = function(e) message("[DIAG] observe DB check ERROR: ", e$message))
+      }
+    })
+  })
+
   # Presets de fechas
   observeEvent(input$preset_7, {
     updateDateRangeInput(session, "fechas", start = Sys.Date() - 6, end = Sys.Date())
