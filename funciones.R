@@ -338,21 +338,35 @@ ya_scrapeado_en_db <- function(url, con) {
   )
 }
 
-# Parsear fechas con tolerancia a múltiples formatos (ISO, DD-MM-YY, DD-MM-YYYY, "D M YYYY", etc.)
+# Parsear fechas tolerando múltiples formatos. Nunca usa auto-detección (produce fechas erróneas).
+# Soporta: ISO "YYYY-MM-DD", "DD-MM-YY", "DD-MM-YYYY", "D M YYYY", "DD/MM/YYYY", etc.
 .parse_fecha <- function(x) {
-  if (inherits(x, "Date")) return(x)
+  if (inherits(x, "Date"))                        return(x)
   if (inherits(x, "POSIXct") || inherits(x, "POSIXlt")) return(as.Date(x))
   x_chr <- trimws(as.character(x))
-  d <- suppressWarnings(as.Date(x_chr))
-  if (!all(is.na(d))) return(d)
-  fmts <- c("%d-%m-%y", "%d-%m-%Y", "%d/%m/%Y", "%d/%m/%y",
-            "%Y/%m/%d", "%m/%d/%Y", "%d %m %Y", "%Y %m %d",
-            "%d %m %y", "%B %d, %Y", "%d de %B de %Y")
+  result <- as.Date(rep(NA_character_, length(x_chr)))
+  fmts <- c(
+    "%Y-%m-%d",   # ISO:       2026-04-01
+    "%Y/%m/%d",   #            2026/04/01
+    "%d-%m-%Y",   # ES largo:  01-04-2026
+    "%d/%m/%Y",   # ES largo:  01/04/2026
+    "%d-%m-%y",   # ES corto:  31-03-20
+    "%d/%m/%y",   # ES corto:  31/03/20
+    "%d %m %Y",   # 24horas:   5 3 2026
+    "%d %m %y"    # 24horas y: 5 3 26
+  )
   for (fmt in fmts) {
-    d <- suppressWarnings(as.Date(x_chr, format = fmt))
-    if (!all(is.na(d))) return(d)
+    still_na <- is.na(result)
+    if (!any(still_na)) break
+    parsed <- tryCatch(
+      suppressWarnings(as.Date(x_chr[still_na], format = fmt)),
+      error = function(e) as.Date(rep(NA_character_, sum(still_na)))
+    )
+    # Solo aceptar años >= 1900 para evitar que "%Y-%m-%d" interprete "31-03-20" como año 31
+    valid <- !is.na(parsed) & as.integer(format(parsed, "%Y")) >= 1900
+    result[still_na][valid] <- parsed[valid]
   }
-  suppressWarnings(as.Date(x_chr))  # devuelve NA si todo falla
+  result
 }
 
 guardar_noticias_en_postgres <- function(df, con) {
