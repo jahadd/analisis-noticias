@@ -338,6 +338,23 @@ ya_scrapeado_en_db <- function(url, con) {
   )
 }
 
+# Parsear fechas con tolerancia a múltiples formatos (ISO, DD-MM-YY, DD-MM-YYYY, "D M YYYY", etc.)
+.parse_fecha <- function(x) {
+  if (inherits(x, "Date")) return(x)
+  if (inherits(x, "POSIXct") || inherits(x, "POSIXlt")) return(as.Date(x))
+  x_chr <- trimws(as.character(x))
+  d <- suppressWarnings(as.Date(x_chr))
+  if (!all(is.na(d))) return(d)
+  fmts <- c("%d-%m-%y", "%d-%m-%Y", "%d/%m/%Y", "%d/%m/%y",
+            "%Y/%m/%d", "%m/%d/%Y", "%d %m %Y", "%Y %m %d",
+            "%d %m %y", "%B %d, %Y", "%d de %B de %Y")
+  for (fmt in fmts) {
+    d <- suppressWarnings(as.Date(x_chr, format = fmt))
+    if (!all(is.na(d))) return(d)
+  }
+  suppressWarnings(as.Date(x_chr))  # devuelve NA si todo falla
+}
+
 guardar_noticias_en_postgres <- function(df, con) {
   if (is.null(df) || nrow(df) == 0L) {
     message("guardar_noticias_en_postgres: sin datos para guardar.")
@@ -356,8 +373,8 @@ guardar_noticias_en_postgres <- function(df, con) {
   df$fuente        <- as.character(df$fuente)
   df$bajada        <- as.character(df$bajada)
   df$cuerpo        <- as.character(df$cuerpo)
-  df$fecha         <- as.character(as.Date(df$fecha))
-  df$fecha_scraping <- as.character(as.Date(df$fecha_scraping))
+  df$fecha         <- as.character(.parse_fecha(df$fecha))
+  df$fecha_scraping <- as.character(.parse_fecha(df$fecha_scraping))
 
   df <- df[!is.na(df$url) & nzchar(df$url) & !is.na(df$fuente) & !is.na(df$fecha), ]
   if (nrow(df) == 0L) {
