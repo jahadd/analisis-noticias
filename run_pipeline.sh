@@ -66,7 +66,7 @@ SCRAPERS_OK=0
 # ------------------------------------------------------------------------------
 # Detectar rango de fechas a scrapear desde la BD
 # ------------------------------------------------------------------------------
-PSQL="/Library/PostgreSQL/18/bin/psql"
+PSQL="$(command -v psql 2>/dev/null || true)"
 
 # Parsear .env para obtener credenciales de PostgreSQL
 _parse_env() {
@@ -107,16 +107,21 @@ _PG_DB="${_PG_DB//\'/}";   _PG_DB="${_PG_DB//\"/}"
 FECHA_DESDE_SCRAPING=""
 DIAS_SCRAPING=3
 
-if [[ -x "$PSQL" && -n "$_PG_PASS" ]]; then
+if [[ -n "$PSQL" && -x "$PSQL" && -n "$_PG_PASS" ]]; then
   FECHA_MAX_DB=$(PGPASSWORD="$_PG_PASS" "$PSQL" \
     -h "$_PG_HOST" -p "$_PG_PORT" -U "$_PG_USER" -d "$_PG_DB" \
     -t -c "SELECT MAX(fecha)::text FROM noticias;" 2>/dev/null | tr -d '[:space:]')
 
   if [[ "$FECHA_MAX_DB" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]]; then
     HOY=$(date '+%Y-%m-%d')
-    # macOS date -j -f para convertir fechas a epoch
-    EPOCH_MAX=$(date -j -f "%Y-%m-%d" "$FECHA_MAX_DB" "+%s" 2>/dev/null)
-    EPOCH_HOY=$(date -j -f "%Y-%m-%d" "$HOY"          "+%s" 2>/dev/null)
+    # Calcular días: compatible macOS (date -j) y Linux (date -d)
+    if date -j -f "%Y-%m-%d" "$HOY" "+%s" &>/dev/null; then
+      EPOCH_MAX=$(date -j -f "%Y-%m-%d" "$FECHA_MAX_DB" "+%s" 2>/dev/null)
+      EPOCH_HOY=$(date -j -f "%Y-%m-%d" "$HOY"          "+%s" 2>/dev/null)
+    else
+      EPOCH_MAX=$(date -d "$FECHA_MAX_DB" "+%s" 2>/dev/null)
+      EPOCH_HOY=$(date -d "$HOY"          "+%s" 2>/dev/null)
+    fi
 
     if [[ -n "$EPOCH_MAX" && -n "$EPOCH_HOY" ]]; then
       DIAS_SCRAPING=$(( (EPOCH_HOY - EPOCH_MAX) / 86400 ))
