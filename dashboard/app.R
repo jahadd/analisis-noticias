@@ -11,6 +11,7 @@ library(RPostgres)
 library(ggplot2)
 library(dplyr)
 if (requireNamespace("igraph", quietly = TRUE)) library(igraph)
+if (requireNamespace("httr2", quietly = TRUE)) library(httr2)
 
 # ------------------------------------------------------------------------------
 # Cargar .env desde dashboard/ o raíz (Paginaweb) y configurar pool
@@ -98,7 +99,7 @@ onStop(function() {
 ui <- fluidPage(
   tags$head(
     tags$title("Monitor de Noticias Chile — Seguimiento de tendencias en prensa (2018-2026)"),
-    tags$link(rel = "stylesheet", href = "https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap"),
+    tags$link(rel = "stylesheet", href = "https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Inter:wght@400;500;600;700&display=swap"),
     tags$script(HTML("
       function syncTabClass() {
         var active = $('.nav-tabs li.active a').attr('data-value') || '';
@@ -114,166 +115,368 @@ ui <- fluidPage(
       $(document).on('shown.bs.tab', function() {
         setTimeout(function() { $(window).trigger('resize'); }, 50);
       });
+      Shiny.addCustomMessageHandler('toggle_btn_ia', function(msg) {
+        var btn = document.getElementById('btn_generar_resumen');
+        if (!btn) return;
+        btn.disabled = msg.disabled;
+        btn.textContent = msg.label;
+      });
     ")),
     tags$style(HTML("
+      /* === BASE === */
+      body {
+        background-color: #f0f4f8;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+        font-size: 14px;
+      }
+      /* === HEADER === */
       .dashboard-title {
-        font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-        font-size: 2.6rem;
-        font-weight: 700;
-        color: #1a1a2e;
-        letter-spacing: -0.03em;
-        line-height: 1.2;
-        margin: 0 0 0.4rem 0;
-        padding-bottom: 0.6rem;
-        border-bottom: 3px solid #0d6efd;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+        font-size: 3.3rem;
+        font-weight: 800;
+        color: #0f172a;
+        letter-spacing: -0.04em;
+        line-height: 1.15;
+        margin: 0 0 0.3rem 0;
+        padding-bottom: 0;
+        border-bottom: none;
       }
       .titulo-row {
         display: flex;
         align-items: flex-end;
         justify-content: space-between;
         gap: 16px;
-        padding-bottom: 0.6rem;
+        padding-bottom: 0.9rem;
         border-bottom: 3px solid #0d6efd;
-        margin-bottom: 0.4rem;
+        margin-bottom: 0.75rem;
       }
-      .titulo-row .dashboard-title {
-        border-bottom: none !important;
-        padding-bottom: 0 !important;
+      .titulo-row .dashboard-title { border-bottom: none !important; padding-bottom: 0 !important; margin-bottom: 0 !important; }
+      .dashboard-subtitle {
+        font-size: 1.5rem;
+        color: #64748b;
+        margin: 0 0 1rem 0;
+        font-weight: 400;
+        letter-spacing: 0.01em;
+      }
+      .btn-volver-escritorio { display: none; }
+      .standalone .btn-volver-escritorio {
+        display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0;
+        background: #0f172a; color: #fff !important; border-radius: 7px;
+        padding: 7px 14px; font-size: 1.38rem; font-weight: 600;
+        text-decoration: none !important; letter-spacing: 0.03em;
+        white-space: nowrap; transition: background 0.15s; margin-bottom: 4px;
+      }
+      .btn-volver-escritorio:hover { background: #0d6efd; color: #fff !important; text-decoration: none !important; }
+      /* === LAYOUT === */
+      .container-fluid { padding-left: 2rem !important; padding-right: 2rem !important; }
+      /* Main content column: breathing room from sidebar */
+      .col-sm-9 { padding-left: 2rem !important; padding-right: 2.5rem !important; }
+      /* Sidebar left margin */
+      .col-sm-3 { padding-left: 0 !important; padding-right: 0 !important; }
+      /* === SIDEBAR === */
+      .well {
+        background: #ffffff !important;
+        border: none !important;
+        border-right: 1px solid #e8edf3 !important;
+        border-radius: 0 !important;
+        box-shadow: 3px 0 20px rgba(15,23,42,0.06) !important;
+        padding: 1.5rem 1.1rem 2rem 1.2rem !important;
+        min-height: 100vh;
         margin-bottom: 0 !important;
       }
-      .btn-volver-escritorio {
-        display: none;
+      .sidebar-seccion { margin-bottom: 1.1rem; }
+      .sidebar-seccion .control-label {
+        font-weight: 600; font-size: 1.32rem; letter-spacing: 0.07em;
+        text-transform: uppercase; margin-bottom: 8px;
+        display: block; color: #64748b;
       }
-      .standalone .btn-volver-escritorio {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        flex-shrink: 0;
-        background: #1a1a2e;
-        color: #fff !important;
-        border-radius: 6px;
-        padding: 7px 14px;
-        font-size: 0.8rem;
+      .sidebar-terminos { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #e2e8f0; }
+      .sidebar-medio-destacados { border-top: 1px solid #e2e8f0; padding-top: 1rem; margin-top: 0.25rem; }
+      /* === PRESET BUTTONS === */
+      .preset-buttons { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 5px; margin: 8px 0 0 0; }
+      .preset-buttons .btn {
+        font-size: 1.32rem; font-weight: 500; padding: 8px 4px;
+        background: #f8fafc; border: 1px solid #e2e8f0; color: #475569;
+        border-radius: 6px; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        transition: all 0.14s;
+      }
+      .preset-buttons .btn:hover { background: #e2e8f0; border-color: #cbd5e1; color: #0f172a; }
+      /* === IA SIDEBAR BUTTON === */
+      .btn-ia-sidebar {
+        width: 100%; display: flex; align-items: center; justify-content: center;
+        gap: 8px;
+        background: linear-gradient(135deg, #ede9fe 0%, #e0e7ff 100%);
+        border: 1.5px solid #c4b5fd; color: #5b21b6;
+        border-radius: 10px; padding: 13px 0;
+        font-size: 1.19rem; font-weight: 600; cursor: pointer;
+        transition: all 0.18s; line-height: 1.4;
+        box-shadow: 0 2px 8px rgba(124,58,237,0.10);
+      }
+      .btn-ia-sidebar:hover, .btn-ia-sidebar:focus {
+        background: linear-gradient(135deg, #ddd6fe 0%, #c7d2fe 100%);
+        border-color: #7c3aed; color: #4c1d95; outline: none;
+        box-shadow: 0 4px 14px rgba(124,58,237,0.18);
+        transform: translateY(-1px);
+      }
+      /* === TAB NAVIGATION === */
+      .nav-tabs {
+        border-bottom: 2px solid #e2e8f0 !important;
+        margin-bottom: 0 !important;
+        gap: 0;
+      }
+      .nav-tabs > li > a {
+        border: none !important;
+        border-bottom: 2px solid transparent !important;
+        border-radius: 0 !important;
+        padding: 0.85rem 1.4rem !important;
+        color: #64748b !important;
+        font-weight: 500 !important;
+        font-size: 1.5rem !important;
+        letter-spacing: 0.01em;
+        margin-bottom: -2px !important;
+        background: transparent !important;
+        transition: color 0.15s, border-color 0.15s;
+      }
+      .nav-tabs > li.active > a,
+      .nav-tabs > li.active > a:hover,
+      .nav-tabs > li.active > a:focus {
+        color: #0d6efd !important;
+        border-bottom: 2px solid #0d6efd !important;
+        background: transparent !important;
+        font-weight: 600 !important;
+      }
+      .nav-tabs > li > a:hover {
+        color: #0f172a !important;
+        border-bottom: 2px solid #cbd5e1 !important;
+        background: transparent !important;
+      }
+      .tab-content { padding-top: 1.5rem; }
+      /* === SECTION HEADINGS === */
+      .tab-content h4 {
+        font-size: 1.73rem;
+        font-weight: 700;
+        color: #0f172a;
+        letter-spacing: -0.01em;
+        margin: 0 0 0.25rem 0;
+        padding: 0;
+      }
+      /* === SECTION CARDS (chart wrappers) === */
+      .chart-card {
+        background: #ffffff;
+        border: 1px solid #e8edf3;
+        border-radius: 14px;
+        padding: 1.4rem 1.4rem 1.1rem 1.4rem;
+        margin-bottom: 1.4rem;
+        box-shadow: 0 2px 14px rgba(15,23,42,0.07), 0 1px 3px rgba(15,23,42,0.04);
+        overflow: visible;
+      }
+      .chart-card h4 { margin-bottom: 0.2rem; }
+      /* === METRIC CARDS === */
+      .small-metric { font-size: 1.47rem; color: #64748b; margin: 4px 0 0.75rem 0; }
+      .card-box {
+        padding: 20px 22px;
+        border-radius: 14px;
+        background: #ffffff;
+        border: 1px solid #e8edf3;
+        box-shadow: 0 2px 14px rgba(15,23,42,0.07), 0 1px 3px rgba(15,23,42,0.04);
+      }
+      .card-box .valor {
+        font-size: 3.15rem;
+        font-weight: 800;
+        color: #0d6efd;
+        letter-spacing: -0.04em;
+        line-height: 1;
+        display: block;
+        margin-bottom: 4px;
+      }
+      .card-box .etiqueta {
+        font-size: 1.32rem;
         font-weight: 600;
-        text-decoration: none !important;
-        letter-spacing: 0.03em;
-        white-space: nowrap;
-        transition: background 0.15s;
-        margin-bottom: 3px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: #94a3b8;
       }
-      .btn-volver-escritorio:hover {
-        background: #0d6efd;
-        color: #fff !important;
-        text-decoration: none !important;
+      /* === HR SEPARATORS === */
+      hr { border: none; border-top: 1px solid #e2e8f0; margin: 1.25rem 0; }
+      /* === FORMS & INPUTS === */
+      .form-control {
+        border-radius: 7px !important;
+        border-color: #e2e8f0 !important;
+        font-size: 1.5rem !important;
+        color: #0f172a !important;
+        box-shadow: none !important;
       }
-      .dashboard-subtitle {
-        font-size: 0.95rem;
-        color: #6c757d;
-        margin: 0 0 1.25rem 0;
+      .form-control:focus {
+        border-color: #0d6efd !important;
+        box-shadow: 0 0 0 3px rgba(13,110,253,0.1) !important;
       }
-      .small-metric { font-size: 0.9em; color: #6c757d; margin-top: 8px; }
-      .card-box { padding: 12px; border-radius: 6px; background: #f8f9fa; border: 1px solid #dee2e6; }
-      .card-box .valor { font-size: 1.8em; font-weight: bold; color: #0d6efd; }
-      .sidebar-seccion { margin-bottom: 1.25rem; }
-      .sidebar-seccion .control-label { font-weight: 600; margin-bottom: 6px; display: block; color: #1a1a2e; }
-      .sidebar-terminos { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #dee2e6; }
-      .sidebar-medio-destacados {
-        border-top: 2px solid #dee2e6;
-        padding-top: 1rem;
-        margin-top: 0.25rem;
+      .busqueda-termino { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #e2e8f0; }
+      .busqueda-termino .control-label {
+        font-weight: 600; font-size: 1.32rem; letter-spacing: 0.07em;
+        text-transform: uppercase; margin-bottom: 8px; display: block; color: #64748b;
       }
-      .preset-buttons { display: flex; flex-direction: column; gap: 8px; margin: 8px 0; }
-      .preset-buttons .btn { margin: 0; }
-      .term-chips-box { padding: 8px 0; }
-      .term-chips-box .shiny-options-group { display: flex; flex-wrap: wrap; gap: 6px; }
-      .term-chips-box .checkbox { margin: 0; }
-      .term-chips-box .checkbox-inline { margin: 0; padding: 5px 12px; border-radius: 6px; border: 1px solid #dee2e6; background: #f8f9fa; cursor: pointer; }
-      .term-chips-box .checkbox-inline:hover { background: #e9ecef; }
-      .term-chips-box label.checkbox-inline:has(input:checked) { background: #0d6efd; border-color: #0d6efd; color: #fff; }
-      .term-chips-box label { cursor: pointer; }
-      .term-chips-box input[type='checkbox'] { display: none; }
-      .busqueda-termino { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #e9ecef; }
-      .busqueda-termino .control-label { font-weight: 600; margin-bottom: 6px; display: block; color: #1a1a2e; }
       .busqueda-termino .form-group { margin-bottom: 0.5rem; }
       .busqueda-termino .form-control {
-        width: 100%; max-width: 100%;
-        padding: 8px 12px;
-        border-radius: 8px;
-        border: 1px solid #dee2e6;
-        font-size: inherit;
+        width: 100%; max-width: 100%; padding: 9px 13px;
+        border-radius: 7px; border: 1px solid #e2e8f0; font-size: 1.5rem;
       }
       .busqueda-termino .form-control:focus {
-        border-color: #0d6efd;
-        box-shadow: 0 0 0 2px rgba(13, 110, 253, 0.2);
-        outline: none;
+        border-color: #0d6efd; box-shadow: 0 0 0 3px rgba(13,110,253,0.1); outline: none;
       }
-      .busqueda-termino .form-control::placeholder { color: #adb5bd; }
+      .busqueda-termino .form-control::placeholder { color: #94a3b8; }
+      /* === TERM CHIPS === */
+      .term-chips-box { padding: 6px 0; }
+      .term-chips-box .shiny-options-group { display: flex; flex-wrap: wrap; gap: 6px; }
+      .term-chips-box .checkbox { margin: 0; }
+      .term-chips-box .checkbox-inline {
+        margin: 0; padding: 7px 16px; border-radius: 20px;
+        border: 1.5px solid #e2e8f0; background: #f8fafc; cursor: pointer;
+        font-size: 1.43rem; font-weight: 500; color: #475569;
+        transition: all 0.14s;
+      }
+      .term-chips-box .checkbox-inline:hover { background: #f1f5f9; border-color: #cbd5e1; }
+      .term-chips-box label.checkbox-inline:has(input:checked) {
+        background: #0d6efd; border-color: #0d6efd; color: #fff;
+      }
+      .term-chips-box label { cursor: pointer; }
+      .term-chips-box input[type='checkbox'] { display: none; }
+      /* === FREQUENCY ITEMS === */
       .frecuencia-termino-valor {
-        margin-top: 8px; padding: 10px 12px;
-        border-radius: 8px; background: #e7f1ff; border: 1px solid #b6d4fe;
-        font-size: inherit; color: #0d6efd;
+        margin-top: 8px; padding: 10px 14px;
+        border-radius: 8px; background: #eff6ff; border: 1px solid #bfdbfe;
+        font-size: 1.5rem; color: #1d4ed8;
       }
-      .frecuencia-termino-valor .numero { font-size: 1.15em; font-weight: 700; }
-      .frecuencia-termino-msg { font-size: inherit; color: #6c757d; margin: 8px 0 0 0; }
-      .frecuencia-termino-lista { margin-top: 8px; max-height: 280px; overflow-y: auto; }
+      .frecuencia-termino-valor .numero { font-size: 1.88rem; font-weight: 700; }
+      .frecuencia-termino-msg { font-size: 1.43rem; color: #94a3b8; margin: 8px 0 0 0; }
+      .frecuencia-termino-lista { margin-top: 8px; max-height: 320px; overflow-y: auto; }
       .frecuencia-termino-item {
-        padding: 6px 10px; margin-bottom: 2px;
-        border-radius: 6px; background: #e7f1ff; border: 1px solid #b6d4fe;
-        font-size: inherit; color: #0d6efd; display: flex; justify-content: space-between; align-items: baseline; gap: 8px;
-        cursor: pointer; transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+        padding: 8px 12px; margin-bottom: 4px; border-radius: 7px;
+        background: #eff6ff; border: 1px solid #bfdbfe;
+        font-size: 1.46rem; color: #1d4ed8;
+        display: flex; justify-content: space-between; align-items: baseline; gap: 8px;
+        cursor: pointer; transition: all 0.13s;
       }
       .frecuencia-termino-item:hover {
-        background: #cfe2ff; border-color: #0d6efd; box-shadow: 0 0 0 1px rgba(13, 110, 253, 0.25);
+        background: #dbeafe; border-color: #0d6efd;
+        box-shadow: 0 0 0 1px rgba(13,110,253,0.2);
       }
       .frecuencia-termino-nombre { font-weight: 500; word-break: break-word; }
       .frecuencia-termino-num { font-weight: 700; white-space: nowrap; }
-      .busqueda-noticias { margin-bottom: 0.75rem; }
+      /* === NEWS SEARCH === */
+      .busqueda-noticias { margin-bottom: 0.6rem; }
       .busqueda-noticias .form-group { margin-bottom: 0; }
       .busqueda-noticias .form-control {
-        padding: 8px 14px;
-        border-radius: 8px;
-        border: 1px solid #dee2e6;
-        font-size: 1.05rem;
+        padding: 9px 15px; border-radius: 7px; border: 1px solid #e2e8f0; font-size: 1.19rem;
       }
-      .busqueda-noticias .form-control:focus {
-        border-color: #0d6efd;
-        box-shadow: 0 0 0 2px rgba(13, 110, 253, 0.2);
-      }
+      .busqueda-noticias .form-control:focus { border-color: #0d6efd; box-shadow: 0 0 0 3px rgba(13,110,253,0.1); }
       .busqueda-noticias .selectize-control { margin-bottom: 0; }
       .busqueda-noticias .selectize-control .selectize-input {
-        border: 1px solid #dee2e6 !important;
-        border-radius: 8px !important;
-        padding: 8px 14px !important;
-        font-size: 1.05rem !important;
-        box-shadow: none !important;
-        min-height: unset !important;
-        line-height: 1.5 !important;
+        border: 1px solid #e2e8f0 !important; border-radius: 7px !important;
+        padding: 9px 15px !important; font-size: 1.19rem !important;
+        box-shadow: none !important; min-height: unset !important; line-height: 1.5 !important;
       }
       .busqueda-noticias .selectize-control .selectize-input.focus {
-        border-color: #0d6efd !important;
-        box-shadow: 0 0 0 2px rgba(13, 110, 253, 0.2) !important;
+        border-color: #0d6efd !important; box-shadow: 0 0 0 3px rgba(13,110,253,0.1) !important;
       }
-      .seccion-ultimas-noticias h4 { margin-bottom: 0.5rem; }
-      .insights-tab {
-        width: 100%; max-width: 100%; padding: 0;
-        font-size: 1.4rem; line-height: 1.6; color: #2d3748;
+      /* === NEWS SECTION === */
+      .seccion-ultimas-noticias { background: #fff; border: 1px solid #e8edf3; border-radius: 14px; padding: 1.4rem 1.4rem 1rem; box-shadow: 0 2px 14px rgba(15,23,42,0.07), 0 1px 3px rgba(15,23,42,0.04); }
+      .seccion-ultimas-noticias h4 { margin-bottom: 0.75rem; }
+      /* === TABLE === */
+      .shiny-output-container .table { font-size: 1.5rem; border-collapse: separate; border-spacing: 0; }
+      .shiny-output-container .table thead th {
+        font-weight: 600; font-size: 1.32rem; text-transform: uppercase;
+        letter-spacing: 0.07em; color: #64748b; border-bottom: 2px solid #e2e8f0;
+        padding: 10px 12px; background: #f8fafc;
       }
+      .shiny-output-container .table tbody tr td { padding: 9px 12px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
+      .shiny-output-container .table tbody tr:last-child td { border-bottom: none; }
+      .shiny-output-container .table-striped tbody tr:nth-of-type(odd) td { background-color: #f8fafc; }
+      .shiny-output-container .table-hover tbody tr:hover td { background-color: #eff6ff; }
+      /* === PAGINATION === */
+      .shiny-output-container .btn-sm { font-size: 1.43rem; border-radius: 6px; }
+      /* === IA GENERATE BUTTON === */
+      .btn-generar-ia {
+        background: #0d6efd !important; border: none !important; color: #fff !important;
+        font-size: 1.5rem !important; padding: 10px 24px !important; border-radius: 7px !important;
+        font-weight: 600 !important; white-space: nowrap; transition: background 0.15s !important;
+      }
+      .btn-generar-ia:hover { background: #0b5ed7 !important; }
+      .btn-generar-ia:disabled, .btn-generar-ia[disabled] { background: #9ca3af !important; cursor: not-allowed !important; }
+      /* === CHAT AGENT === */
+      .chat-messages {
+        height: 420px; overflow-y: auto; padding: 16px 8px;
+        display: flex; flex-direction: column; gap: 16px;
+        scroll-behavior: smooth;
+      }
+      .chat-welcome {
+        text-align: center; color: #64748b; font-size: 1rem; margin-bottom: 14px;
+      }
+      .chat-chips { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+      .chip-btn {
+        background: #f0f4f8; border: 1.5px solid #e2e8f0; border-radius: 20px;
+        padding: 7px 16px; font-size: 0.88rem; color: #475569; cursor: pointer;
+        transition: all 0.15s; line-height: 1.4;
+      }
+      .chip-btn:hover { background: #e0e7ff; border-color: #818cf8; color: #3730a3; }
+      .chat-msg { display: flex; align-items: flex-end; gap: 8px; }
+      .chat-msg.user { flex-direction: row-reverse; }
+      .chat-avatar {
+        width: 30px; height: 30px; border-radius: 50%; flex-shrink: 0;
+        background: linear-gradient(135deg, #6610f2, #0d6efd);
+        display: flex; align-items: center; justify-content: center;
+        color: #fff; font-size: 0.78rem;
+      }
+      .chat-bubble {
+        max-width: 78%; padding: 10px 14px; line-height: 1.55;
+        font-size: 0.95rem; word-break: break-word;
+      }
+      .chat-msg.user .chat-bubble {
+        background: #0d6efd; color: #fff;
+        border-radius: 16px 16px 4px 16px;
+      }
+      .chat-msg.assistant .chat-bubble {
+        background: #f0f4f8; color: #1a2332;
+        border-radius: 16px 16px 16px 4px;
+      }
+      .chat-typing { display: flex; gap: 6px; align-items: center; padding: 14px 18px; }
+      .chat-typing span {
+        width: 9px; height: 9px; border-radius: 50%; background: #94a3b8;
+        animation: ia-dot-pulse 1.4s ease-in-out infinite;
+      }
+      .chat-typing span:nth-child(2) { animation-delay: 0.22s; }
+      .chat-typing span:nth-child(3) { animation-delay: 0.44s; }
+      @keyframes ia-dot-pulse {
+        0%, 100% { opacity: 0.25; transform: scale(0.7); }
+        50%       { opacity: 1;   transform: scale(1);   }
+      }
+      .chat-sql-toggle { font-size: 0.75rem; color: #94a3b8; cursor: pointer; margin-top: 4px; user-select: none; }
+      .chat-sql-toggle:hover { color: #64748b; }
+      .chat-sql-code {
+        font-size: 0.75rem; font-family: monospace; background: #f8f9fa;
+        border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px 10px;
+        margin-top: 4px; white-space: pre-wrap; word-break: break-all; color: #475569;
+      }
+      .chat-input-area {
+        display: flex; gap: 8px; padding: 12px 8px 0 8px;
+        border-top: 1px solid #e2e8f0; align-items: center;
+      }
+      .chat-input-area .form-group { margin: 0; flex: 1; }
+      .chat-input-area .form-control { border-radius: 22px !important; padding: 9px 16px !important; font-size: 0.95rem !important; }
+      .chat-send-btn {
+        width: 38px; height: 38px; border-radius: 50%; padding: 0;
+        display: flex; align-items: center; justify-content: center;
+        background: #0d6efd; border: none; color: #fff; flex-shrink: 0;
+        cursor: pointer; transition: background 0.15s;
+      }
+      .chat-send-btn:hover { background: #0b5ed7; }
+      .chat-send-btn:disabled { background: #cbd5e1; cursor: not-allowed; }
+      /* === MÁS INFORMACIÓN (non-Win95) === */
+      .insights-tab { width: 100%; max-width: 100%; padding: 0; font-size: 1.4rem; line-height: 1.6; color: #2d3748; }
       .insights-tab h4 { font-size: 1.75rem; font-weight: 600; color: #1a1a2e; margin-bottom: 1rem; letter-spacing: -0.02em; }
-      .insights-subtitle {
-        font-size: 1.4rem; color: #4a5568; margin-bottom: 2rem; line-height: 1.6;
-      }
-      .insight-contenido {
-        padding: 0; margin: 0;
-        font-size: 1.4rem; line-height: 1.65; color: #2d3748;
-      }
-      .insight-contenido .insight-titulo {
-        font-size: 1.75rem; font-weight: 600; color: #1a1a2e;
-        margin: 0 0 1.25rem 0; letter-spacing: -0.02em; padding-bottom: 0.75rem;
-        border-bottom: 2px solid #e2e8f0;
-      }
-      .insight-contenido .insight-texto {
-        margin: 0 0 1rem 0; font-size: 1.4rem; color: #2d3748; line-height: 1.65;
-      }
+      .insights-subtitle { font-size: 1.4rem; color: #4a5568; margin-bottom: 2rem; line-height: 1.6; }
+      .insight-contenido { padding: 0; margin: 0; font-size: 1.4rem; line-height: 1.65; color: #2d3748; }
+      .insight-contenido .insight-titulo { font-size: 1.75rem; font-weight: 600; color: #1a1a2e; margin: 0 0 1.25rem 0; letter-spacing: -0.02em; padding-bottom: 0.75rem; border-bottom: 2px solid #e2e8f0; }
+      .insight-contenido .insight-texto { margin: 0 0 1rem 0; font-size: 1.4rem; color: #2d3748; line-height: 1.65; }
       .insight-contenido .insight-texto:last-child { margin-bottom: 0; }
       .insight-contenido a.insight-link { color: #0d6efd; text-decoration: none; border-bottom: 1px solid #0d6efd; }
       .insight-contenido a.insight-link:hover { text-decoration: underline; }
@@ -284,21 +487,12 @@ ui <- fluidPage(
       .sidebar-insights .shiny-options-group { display: flex; flex-direction: column; gap: 0; }
       .sidebar-insights .radio { margin: 0; }
       .sidebar-insights input[type='radio'] { display: none; }
-      .sidebar-insights .radio label {
-        padding: 0.75rem 0; margin: 0;
-        border: none; border-bottom: 1px solid #e2e8f0;
-        background: transparent; cursor: pointer; display: block;
-        font-size: 1.25rem; font-weight: 400; color: #475569;
-        transition: color 0.2s ease, font-weight 0.2s ease;
-      }
+      .sidebar-insights .radio label { padding: 0.75rem 0; margin: 0; border: none; border-bottom: 1px solid #e2e8f0; background: transparent; cursor: pointer; display: block; font-size: 1.25rem; font-weight: 400; color: #475569; transition: color 0.2s ease, font-weight 0.2s ease; }
       .sidebar-insights .radio label:last-of-type { border-bottom: none; }
       .sidebar-insights .radio label:hover { color: #1e293b; }
-      .sidebar-insights .radio input:checked + label,
-      .sidebar-insights .radio label:has(input:checked) {
-        color: #0d6efd; font-weight: 600; background: transparent;
-      }
+      .sidebar-insights .radio input:checked + label, .sidebar-insights .radio label:has(input:checked) { color: #0d6efd; font-weight: 600; background: transparent; }
       .mi-header { background: linear-gradient(135deg, #1a1a2e 0%, #0d3b7a 100%); border-radius: 12px; padding: 2.5rem 2rem; margin-bottom: 2rem; color: #fff; }
-      .mi-header h1 { font-size: 2rem; font-weight: 700; margin: 0 0 0.5rem 0; color: #fff; letter-spacing: -0.02em; }
+      .mi-header h1 { font-size: 1.5rem; font-weight: 700; margin: 0 0 0.5rem 0; color: #fff; letter-spacing: -0.02em; }
       .mi-header p { font-size: 1.05rem; color: rgba(255,255,255,0.8); margin: 0 0 1.25rem 0; }
       .mi-badges { display: flex; flex-wrap: wrap; gap: 8px; }
       .mi-badge { background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.3); border-radius: 20px; padding: 4px 14px; font-size: 0.85rem; color: #fff; }
@@ -412,6 +606,22 @@ ui <- fluidPage(
       .mi-w95-statusbar a { color: #000080; text-decoration: underline; font-size: 16px; }
       .mi-w95-statusbar span { color: #444; margin-left: auto; }
       @media (max-width: 768px) { .mi-w95-grid { grid-template-columns: 1fr; } }
+      /* === RED DE PALABRAS: overlay de carga === */
+      .red-spinner-wrap { position: relative; }
+      .red-loading-overlay {
+        display: none;
+        position: absolute;
+        inset: 0;
+        background: rgba(255,255,255,0.88);
+        border-radius: 14px;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 18px;
+        z-index: 20;
+        pointer-events: none;
+      }
+      .red-loading-overlay.visible { display: flex; }
     ")),
     tags$script(HTML("
       (function() {
@@ -419,6 +629,17 @@ ui <- fluidPage(
           document.documentElement.classList.add('standalone');
         }
       })();
+
+      $(document).on('shiny:outputinvalidated', function(e) {
+        if (e.target.id === 'red_coocurrencia_plotly') {
+          $('#red-loading-overlay').addClass('visible');
+        }
+      });
+      $(document).on('shiny:value shiny:error shiny:recalculated', function(e) {
+        if (e.target.id === 'red_coocurrencia_plotly') {
+          $('#red-loading-overlay').removeClass('visible');
+        }
+      });
     "))
   ),
   div(style = "padding: 1rem 1rem 0;"),
@@ -450,6 +671,11 @@ ui <- fluidPage(
           actionButton("preset_7",  "Últimos 7 días",  class = "btn-sm"),
           actionButton("preset_30", "Último mes",     class = "btn-sm"),
           actionButton("preset_365", "Último año", class = "btn-sm")
+        ),
+        div(style = "margin-top: 14px; padding-top: 12px; border-top: 1px solid #dee2e6;",
+          actionButton("btn_abrir_ia",
+                       label = tagList(icon("robot"), " Agente de datos"),
+                       class = "btn-ia-sidebar")
         ),
         conditionalPanel(
           condition = "!(input.tabs === 'Medios' && input.tabs_medios === 'Volumen de datos')",
@@ -492,7 +718,7 @@ ui <- fluidPage(
             )
           ),
             uiOutput("frecuencia_termino")
-          )
+          ),
         )
       ),
         conditionalPanel(
@@ -548,7 +774,8 @@ ui <- fluidPage(
               selectInput("fuente_red", label = NULL, choices = character(0), selected = NULL)
             ),
             sliderInput("umbral_coocurrencia", "Co-ocurrencia mínima", min = 2L, max = 50L, value = 5L, step = 1L),
-            sliderInput("max_nodos_red", "Máximo de nodos", min = 10L, max = 150L, value = 50L, step = 10L)
+            sliderInput("max_nodos_red", "Máximo de nodos", min = 10L, max = 150L, value = 50L, step = 10L),
+            uiOutput("slider_semantico_red_ui")
           )
         )
     ),
@@ -564,15 +791,15 @@ ui <- fluidPage(
             column(6, uiOutput("card_termino_top"))
           ),
           tags$p(class = "small-metric", uiOutput("texto_volumen")),
-          hr(),
-          h4("¿Cómo han cambiado los temas con el tiempo?"),
-          p(class = "small-metric", "Selecciona palabras en el panel izquierdo para ver cómo evolucionó su presencia en los titulares."),
-          div(style = "margin-bottom: 2.5rem;",
+          div(class = "chart-card",
+            h4("¿Cómo han cambiado los temas con el tiempo?"),
+            tags$p(class = "small-metric", "Selecciona palabras en el panel izquierdo para ver cómo evolucionó su presencia en los titulares."),
             plotlyOutput("grafico_evolucion", height = "380px")
           ),
-          h4("Las 30 palabras más mencionadas en el período", style = "margin-top: 0.5rem;"),
-          plotlyOutput("grafico_top_terminos", height = "520px"),
-          hr(),
+          div(class = "chart-card",
+            h4("Las 30 palabras más mencionadas en el período"),
+            plotlyOutput("grafico_top_terminos", height = "520px")
+          ),
           div(class = "seccion-ultimas-noticias",
             h4("Noticias recientes"),
             div(style = "display: flex; gap: 8px; align-items: flex-end; margin-bottom: 0.5rem;",
@@ -593,39 +820,56 @@ ui <- fluidPage(
           tabsetPanel(id = "tabs_medios",
             tabPanel(
               "Conceptos por medio",
-              h4("¿Qué palabras usa cada medio?"),
-              p(class = "small-metric", "Cuántas noticias de cada medio mencionan el término buscado en el titular, dentro del período seleccionado."),
-              plotlyOutput("grafico_conceptos_por_medio", height = "600px"),
-              hr(),
-              h4("¿Cómo evolucionó este concepto en cada medio?"),
-              p(class = "small-metric", "Evolución temporal del término buscado por medio de comunicación (top 8 medios por frecuencia total)."),
-              plotlyOutput("grafico_evolucion_concepto_por_medio", height = "420px")
+              div(class = "chart-card",
+                h4("¿Qué palabras usa cada medio?"),
+                tags$p(class = "small-metric", "Cuántas noticias de cada medio mencionan el término buscado en el titular, dentro del período seleccionado."),
+                plotlyOutput("grafico_conceptos_por_medio", height = "600px")
+              ),
+              div(class = "chart-card",
+                h4("¿Cómo evolucionó este concepto en cada medio?"),
+                tags$p(class = "small-metric", "Evolución temporal del término buscado por medio de comunicación (top 8 medios por frecuencia total)."),
+                plotlyOutput("grafico_evolucion_concepto_por_medio", height = "420px")
+              )
             ),
             tabPanel(
               "Términos destacados",
-              h4("Los temas favoritos de cada medio"),
-              p(class = "small-metric", "Los términos que más aparecen en los titulares del medio seleccionado."),
-              plotlyOutput("grafico_terminos_por_medio", height = "500px"),
-              hr(),
-              h4("¿Cuándo fueron más mencionados estos temas?"),
-              p(class = "small-metric", "Evolución temporal de los términos más frecuentes del medio seleccionado. Selecciona los términos en el panel izquierdo."),
-              plotlyOutput("grafico_evolucion_terminos_por_medio", height = "380px")
+              div(class = "chart-card",
+                h4("Los temas favoritos de cada medio"),
+                tags$p(class = "small-metric", "Los términos que más aparecen en los titulares del medio seleccionado."),
+                plotlyOutput("grafico_terminos_por_medio", height = "500px")
+              ),
+              div(class = "chart-card",
+                h4("¿Cuándo fueron más mencionados estos temas?"),
+                tags$p(class = "small-metric", "Evolución temporal de los términos más frecuentes del medio seleccionado. Selecciona los términos en el panel izquierdo."),
+                plotlyOutput("grafico_evolucion_terminos_por_medio", height = "380px")
+              )
             ),
             tabPanel(
               "Volumen de datos",
-              h4("Volumen de noticias por medio"),
-              p(class = "small-metric", "Top de medios ordenados por volumen total de noticias publicadas en el período seleccionado."),
-              plotlyOutput("grafico_por_medio", height = "700px"),
-              hr(),
-              h4("Evolución del volumen en el tiempo"),
-              p(class = "small-metric", "Noticias publicadas por mes y medio. Selecciona los medios en el panel izquierdo. Vista anual cuando el rango supera los 2 años."),
-              plotlyOutput("grafico_evolucion_volumen_por_medio", height = "420px")
+              div(class = "chart-card",
+                h4("Volumen de noticias por medio"),
+                tags$p(class = "small-metric", "Top de medios ordenados por volumen total de noticias publicadas en el período seleccionado."),
+                plotlyOutput("grafico_por_medio", height = "700px")
+              ),
+              div(class = "chart-card",
+                h4("Evolución del volumen en el tiempo"),
+                tags$p(class = "small-metric", "Noticias publicadas por mes y medio. Selecciona los medios en el panel izquierdo. Vista anual cuando el rango supera los 2 años."),
+                plotlyOutput("grafico_evolucion_volumen_por_medio", height = "420px")
+              )
             ),
             tabPanel(
               "Red de palabras",
-              h4("Palabras que aparecen juntas en los titulares"),
-              p(class = "small-metric", "Términos que aparecen en el mismo titular con frecuencia. Cuanto más grueso el nodo, más conexiones tiene."),
-              plotlyOutput("red_coocurrencia_plotly", height = "500px")
+              div(class = "chart-card red-spinner-wrap",
+                h4("Palabras que aparecen juntas en los titulares"),
+                tags$p(class = "small-metric", "Términos que aparecen en el mismo titular con frecuencia. Cuanto más grueso el nodo, más conexiones tiene."),
+                plotlyOutput("red_coocurrencia_plotly", width = "100%", height = "640px"),
+                div(id = "red-loading-overlay", class = "red-loading-overlay visible",
+                  div(class = "ia-modal-dots",
+                    tags$span(), tags$span(), tags$span()
+                  ),
+                  tags$p(class = "ia-modal-loading-msg", "Calculando red de palabras\u2026")
+                )
+              )
             ),
           )
         ),
@@ -647,6 +891,37 @@ ui <- fluidPage(
 server <- function(input, output, session) {
 
   pool <- get_pool()
+
+  rag_store <- tryCatch({
+    if (requireNamespace("ragnar", quietly = TRUE) && file.exists("../datos/noticias_rag.duckdb")) {
+      ragnar::ragnar_store_connect(
+        location  = "../datos/noticias_rag.duckdb",
+        read_only = TRUE
+      )
+    } else NULL
+  }, error = function(e) NULL)
+
+  store_disponible <- reactive({ !is.null(rag_store) })
+
+  # Helper: enriquece resultados VSS con fecha/fuente/titulo desde PostgreSQL
+  # El campo origin del store contiene el noticias.id
+  enriquecer_vss <- function(res) {
+    if (is.null(res) || nrow(res) == 0L) return(res)
+    ids <- res$origin[!is.na(res$origin)]
+    if (length(ids) == 0L) return(res)
+    con <- poolCheckout(pool)
+    meta <- tryCatch({
+      ids_quoted <- paste(vapply(ids, function(x) DBI::dbQuoteLiteral(con, x), character(1L)), collapse = ", ")
+      DBI::dbGetQuery(con,
+        paste0("SELECT id, fecha, fuente, titulo FROM noticias WHERE id IN (", ids_quoted, ")")
+      )
+    }, error = function(e) data.frame(id=character(), fecha=as.Date(character()),
+                                      fuente=character(), titulo=character()))
+    poolReturn(con)
+    res <- merge(res, meta, by.x = "origin", by.y = "id", all.x = TRUE)
+    res$fecha <- as.Date(res$fecha)
+    res
+  }
 
   # Stopwords centralizadas (fuente única: stopwords.R en raíz del proyecto)
   source("../stopwords.R")
@@ -689,6 +964,13 @@ server <- function(input, output, session) {
 
   all_stopwords <- reactive({
     unique(c(STOPWORDS_GRAFICOS, palabras_excluidas_custom()))
+  })
+
+
+  output$slider_semantico_red_ui <- renderUI({
+    if (!store_disponible()) return(NULL)
+    sliderInput("umbral_semantico", "Similitud semántica mínima",
+                min = 0.5, max = 0.95, value = 0.80, step = 0.05)
   })
 
   tabla_config <- reactive({
@@ -839,6 +1121,31 @@ server <- function(input, output, session) {
     terms <- input$terminos_evolucion
     if (is.null(terms) || length(terms) == 0L)
       return(data.frame(fecha = as.Date(character()), termino = character(), frecuencia = integer()))
+
+    if (store_disponible()) {
+      # Búsqueda semántica por cada término seleccionado (una línea por concepto)
+      lineas <- lapply(terms, function(term) {
+        tryCatch({
+          ids_sem <- ragnar::ragnar_retrieve_vss(rag_store, query = term, top_k = 5000L)
+          ids_sem <- enriquecer_vss(ids_sem)
+          if (is.null(ids_sem) || nrow(ids_sem) == 0L || is.null(ids_sem$fecha)) return(NULL)
+          ids_sem <- ids_sem[!is.na(ids_sem$fecha) & ids_sem$fecha >= f$start & ids_sem$fecha <= f$end, ]
+          if (nrow(ids_sem) == 0L) return(NULL)
+          d <- ids_sem %>%
+            dplyr::mutate(fecha = as.Date(fecha)) %>%
+            dplyr::group_by(fecha) %>%
+            dplyr::summarise(frecuencia = dplyr::n(), .groups = "drop") %>%
+            dplyr::mutate(termino = term) %>%
+            dplyr::arrange(fecha)
+          d$frecuencia <- as.integer(d$frecuencia)
+          d
+        }, error = function(e) NULL)
+      })
+      combinado <- do.call(rbind, Filter(Negate(is.null), lineas))
+      if (!is.null(combinado) && nrow(combinado) > 0L) return(combinado)
+      # Sin resultados semánticos en el rango → fallback a SQL
+    }
+
     ph <- paste(sprintf("$%d", seq(3L, length.out = length(terms))), collapse = ", ")
     q <- paste0("
       SELECT fecha, ", cfg$col_t, " AS termino, ", cfg$col_f, " AS frecuencia
@@ -874,12 +1181,39 @@ server <- function(input, output, session) {
   # Dirección de orden para la columna Fecha
   orden_fecha <- reactiveVal("DESC")
 
+  # IDs semánticos para la tabla de noticias (NULL si no aplica)
+  ids_semanticos_tabla <- reactive({
+    if (!store_disponible()) return(NULL)
+    busq <- trimws(if (is.null(input$busqueda_titulo)) "" else input$busqueda_titulo)
+    if (!nzchar(busq)) return(NULL)
+    f <- fechas_noticias()
+    tryCatch({
+      res <- ragnar::ragnar_retrieve_vss(rag_store, query = busq, top_k = 100)
+      if (is.null(res) || nrow(res) == 0L) return(character(0))
+      res <- enriquecer_vss(res)
+      if (!is.null(res$fecha)) res <- res[!is.na(res$fecha) & res$fecha >= f$start & res$fecha <= f$end, ]
+      res$origin
+    }, error = function(e) NULL)
+  })
+
   # Total de noticias en el rango (desde 2018; con filtro de búsqueda en titulares y medio)
   total_noticias_rango <- reactive({
     f <- fechas_noticias()
     start <- f$start
     busq <- trimws(if (is.null(input$busqueda_titulo)) "" else input$busqueda_titulo)
     medio <- if (is.null(input$filtro_medio_noticias) || input$filtro_medio_noticias == "Todos") NULL else input$filtro_medio_noticias
+
+    ids_sem <- ids_semanticos_tabla()
+    if (!is.null(ids_sem)) {
+      if (length(ids_sem) == 0L) return(0L)
+      filtro_medio_sql <- if (!is.null(medio)) " AND fuente = $2" else ""
+      q <- paste0("SELECT COUNT(*) AS n FROM noticias WHERE id = ANY($1)", filtro_medio_sql)
+      params <- list(ids_sem)
+      if (!is.null(medio)) params <- c(params, list(medio))
+      out <- dbGetQuery(pool, q, params = params)
+      return(as.integer(as.numeric(out$n)))
+    }
+
     filtro_medio_sql <- if (!is.null(medio)) " AND fuente = $3" else ""
     filtro_busq_sql  <- if (nchar(busq) > 0L) paste0(" AND titulo ~* $", if (!is.null(medio)) 4L else 3L) else ""
     q <- paste0("SELECT COUNT(*) AS n FROM noticias WHERE fecha >= $1 AND fecha <= $2", filtro_medio_sql, filtro_busq_sql)
@@ -897,6 +1231,7 @@ server <- function(input, output, session) {
   observeEvent(fechas(), { page_noticias(1L) })
   observeEvent(input$busqueda_titulo, { page_noticias(1L) }, ignoreInit = TRUE)
   observeEvent(input$filtro_medio_noticias, { page_noticias(1L) }, ignoreInit = TRUE)
+
   observe({
     medios <- noticias_por_medio()$medio
     updateSelectInput(session, "filtro_medio_noticias",
@@ -915,6 +1250,23 @@ server <- function(input, output, session) {
     dir <- if (orden_fecha() == "ASC") "ASC" else "DESC"
     busq <- trimws(if (is.null(input$busqueda_titulo)) "" else input$busqueda_titulo)
     medio <- if (is.null(input$filtro_medio_noticias) || input$filtro_medio_noticias == "Todos") NULL else input$filtro_medio_noticias
+
+    ids_sem <- ids_semanticos_tabla()
+    if (!is.null(ids_sem)) {
+      if (length(ids_sem) == 0L) return(data.frame(titulo = character(), fecha = character(), medio = character(), url = character()))
+      filtro_medio_sql <- if (!is.null(medio)) " AND fuente = $2" else ""
+      q <- paste0(
+        "SELECT titulo, fecha, fuente AS medio, url FROM noticias",
+        " WHERE id = ANY($1)", filtro_medio_sql,
+        " ORDER BY fecha ", dir,
+        " LIMIT 5 OFFSET $", if (!is.null(medio)) 3L else 2L
+      )
+      params <- list(ids_sem)
+      if (!is.null(medio)) params <- c(params, list(medio))
+      params <- c(params, list((pg - 1L) * 5L))
+      return(dbGetQuery(pool, q, params = params))
+    }
+
     # Construir cláusulas dinámicamente
     filtro_medio_sql <- if (!is.null(medio)) " AND fuente = $3" else ""
     idx_busq <- if (!is.null(medio)) 4L else 3L
@@ -1135,19 +1487,30 @@ server <- function(input, output, session) {
     if (nchar(busq) == 0) return(NULL)
     f <- fechas()
     cfg <- tabla_config()
-    patron <- paste0("%", gsub("\\\\", "\\\\\\\\", gsub("_", "\\\\_", gsub("%", "\\\\%", busq, fixed = TRUE), fixed = TRUE), fixed = TRUE), "%")
+    patron <- paste0(gsub("\\\\", "\\\\\\\\", gsub("_", "\\\\_", gsub("%", "\\\\%", busq, fixed = TRUE), fixed = TRUE), fixed = TRUE), "%")
     q <- paste0("
       SELECT ", cfg$col_t, " AS termino, SUM(", cfg$col_f, ") AS total
       FROM ", cfg$tabla, "
       WHERE fecha >= $1 AND fecha <= $2 AND ", cfg$col_t, " ILIKE $3", cfg$filtro_tipo, "
       GROUP BY termino
-      ORDER BY total DESC
-      LIMIT 25
+      ORDER BY
+        CASE WHEN LOWER(", cfg$col_t, ") = LOWER($4) THEN 0 ELSE 1 END,
+        total DESC
+      LIMIT 20
     ")
-    out <- dbGetQuery(pool, q, params = list(f$start, f$end, patron))
+    out <- dbGetQuery(pool, q, params = list(f$start, f$end, patron, busq))
     if (nrow(out) == 0) return(out)
     out$total <- as.integer(as.numeric(out$total))
-    out
+    if (requireNamespace("SnowballC", quietly = TRUE) && nrow(out) > 1) {
+      stem_t <- function(t) {
+        words <- strsplit(tolower(t), " ", fixed = TRUE)[[1]]
+        paste(SnowballC::wordStem(words, language = "es"), collapse = " ")
+      }
+      out$stem_key <- vapply(out$termino, stem_t, character(1L))
+      out <- out[!duplicated(out$stem_key), , drop = FALSE]
+      out$stem_key <- NULL
+    }
+    head(out, 6L)
   })
 
   # Por cada término seleccionado: sumar frecuencias por medio desde la tabla precalculada.
@@ -1168,18 +1531,37 @@ server <- function(input, output, session) {
 
     out_list <- vector("list", length(terms))
     for (i in seq_along(terms)) {
-      q <- paste0("
-        SELECT fuente AS medio, SUM(", cfg$col_f_pm, ") AS n
-        FROM ", cfg$tabla_pm, "
-        WHERE fecha >= $1 AND fecha <= $2 AND lower(", cfg$col_t_pm, ") = lower($3)", cfg$filtro_tipo_pm, "
-        GROUP BY fuente
-      ")
-      r <- tryCatch(
-        dbGetQuery(pool, q, params = list(start, f$end, terms[i])),
-        error = function(e) data.frame(medio = character(), n = integer())
-      )
+      if (store_disponible()) {
+        r <- tryCatch({
+          res <- ragnar::ragnar_retrieve_vss(rag_store, query = terms[i], top_k = 500)
+          res <- enriquecer_vss(res)
+          if (!is.null(res) && nrow(res) > 0L && !is.null(res$fecha)) {
+            res <- res[!is.na(res$fecha) & res$fecha >= start & res$fecha <= f$end, ]
+          }
+          if (is.null(res) || nrow(res) == 0L) {
+            data.frame(medio = character(), n = integer())
+          } else {
+            res %>%
+              dplyr::group_by(fuente) %>%
+              dplyr::summarise(n = dplyr::n(), .groups = "drop") %>%
+              dplyr::rename(medio = fuente) %>%
+              dplyr::mutate(n = as.integer(n))
+          }
+        }, error = function(e) data.frame(medio = character(), n = integer()))
+      } else {
+        q <- paste0("
+          SELECT fuente AS medio, SUM(", cfg$col_f_pm, ") AS n
+          FROM ", cfg$tabla_pm, "
+          WHERE fecha >= $1 AND fecha <= $2 AND lower(", cfg$col_t_pm, ") = lower($3)", cfg$filtro_tipo_pm, "
+          GROUP BY fuente
+        ")
+        r <- tryCatch(
+          dbGetQuery(pool, q, params = list(start, f$end, terms[i])),
+          error = function(e) data.frame(medio = character(), n = integer())
+        )
+        r$n <- as.integer(as.numeric(r$n))
+      }
       r$termino <- terms[i]
-      r$n <- as.integer(as.numeric(r$n))
       grid <- expand.grid(medio = medios, termino = terms[i], stringsAsFactors = FALSE)
       r <- left_join(grid, r, by = c("medio", "termino")) %>% mutate(n = coalesce(n, 0L))
       out_list[[i]] <- r
@@ -1363,17 +1745,19 @@ server <- function(input, output, session) {
 
   output$selector_terminos_evol <- renderUI({
     disponibles <- terminos_evolucion_disponibles()
+    anadidos    <- terminos_anadidos_por_clic()
     if (length(disponibles) == 0) return(NULL)
     choices <- setNames(disponibles, disponibles)
     top <- top_10_evol()
-    # Selección solo por defecto o lo que el usuario tenga elegido; no auto-añadir términos de la búsqueda
     current_input <- isolate(input$terminos_evolucion)
-    if (!is.null(current_input) && length(current_input) > 0) {
-      selected <- intersect(current_input, disponibles)
+    top_sel <- if (!is.null(current_input) && length(current_input) > 0) {
+      intersect(current_input, top$termino)
     } else {
-      selected <- if (nrow(top) >= 2) head(top$termino, 2) else if (nrow(top) == 1) top$termino else head(disponibles, min(2L, length(disponibles)))
+      if (nrow(top) >= 2) head(top$termino, 2) else if (nrow(top) == 1) top$termino else character(0)
     }
-    if (length(selected) == 0 && length(disponibles) > 0)
+    # Siempre incluir todos los términos añadidos por clic (evita la race condition)
+    selected <- unique(c(top_sel, intersect(anadidos, disponibles)))
+    if (length(selected) == 0)
       selected <- head(disponibles, min(2L, length(disponibles)))
     div(class = "term-chips-box",
       tags$label(class = "control-label", style = "display: block; margin-bottom: 6px;",
@@ -1389,25 +1773,45 @@ server <- function(input, output, session) {
     )
   })
 
-  # Búsqueda parcial: términos que contienen el texto (ILIKE), con su frecuencia en el rango
+  # Si el usuario desmarca un término añadido, quitarlo de terminos_anadidos_por_clic
+  observeEvent(input$terminos_evolucion, {
+    anadidos <- terminos_anadidos_por_clic()
+    desmarcados <- setdiff(anadidos, input$terminos_evolucion)
+    if (length(desmarcados) > 0)
+      terminos_anadidos_por_clic(setdiff(anadidos, desmarcados))
+  }, ignoreInit = TRUE, ignoreNULL = FALSE)
+
+  # Búsqueda parcial: prefix match, exact match primero; agrupar variantes morfológicas por stemming
   resultados_busqueda_termino <- reactive({
     busq <- trimws(if (is.null(input$busqueda_termino)) "" else input$busqueda_termino)
     if (nchar(busq) == 0) return(NULL)
     f <- fechas()
     cfg <- tabla_config()
-    patron <- paste0("%", gsub("\\\\", "\\\\\\\\", gsub("_", "\\\\_", gsub("%", "\\\\%", busq, fixed = TRUE), fixed = TRUE), fixed = TRUE), "%")
+    patron <- paste0(gsub("\\\\", "\\\\\\\\", gsub("_", "\\\\_", gsub("%", "\\\\%", busq, fixed = TRUE), fixed = TRUE), fixed = TRUE), "%")
     q <- paste0("
       SELECT ", cfg$col_t, " AS termino, SUM(", cfg$col_f, ") AS total
       FROM ", cfg$tabla, "
       WHERE fecha >= $1 AND fecha <= $2 AND ", cfg$col_t, " ILIKE $3", cfg$filtro_tipo, "
       GROUP BY termino
-      ORDER BY total DESC
-      LIMIT 25
+      ORDER BY
+        CASE WHEN LOWER(", cfg$col_t, ") = LOWER($4) THEN 0 ELSE 1 END,
+        total DESC
+      LIMIT 20
     ")
-    out <- dbGetQuery(pool, q, params = list(f$start, f$end, patron))
+    out <- dbGetQuery(pool, q, params = list(f$start, f$end, patron, busq))
     if (nrow(out) == 0) return(out)
     out$total <- as.integer(as.numeric(out$total))
-    out
+    # Agrupar variantes morfológicas (plural, conjugaciones) usando stemming español
+    if (requireNamespace("SnowballC", quietly = TRUE) && nrow(out) > 1) {
+      stem_t <- function(t) {
+        words <- strsplit(tolower(t), " ", fixed = TRUE)[[1]]
+        paste(SnowballC::wordStem(words, language = "es"), collapse = " ")
+      }
+      out$stem_key <- vapply(out$termino, stem_t, character(1L))
+      out <- out[!duplicated(out$stem_key), , drop = FALSE]
+      out$stem_key <- NULL
+    }
+    head(out, 6L)
   })
 
   output$frecuencia_termino <- renderUI({
@@ -1469,9 +1873,7 @@ server <- function(input, output, session) {
     term <- input$termo_añadir_evol
     if (is.null(term) || !nzchar(trimws(term))) return()
     terminos_anadidos_por_clic(unique(c(terminos_anadidos_por_clic(), term)))
-    current <- input$terminos_evolucion
-    if (is.null(current)) current <- character(0)
-    updateCheckboxGroupInput(session, "terminos_evolucion", selected = unique(c(current, term)))
+    # selector_terminos_evol se re-renderiza solo con el nuevo término ya seleccionado
   })
 
   output$grafico_evolucion <- renderPlotly({
@@ -1579,6 +1981,53 @@ server <- function(input, output, session) {
         layout(xaxis = list(showticklabels = FALSE), yaxis = list(showticklabels = FALSE)) %>%
         config(displayModeBar = FALSE))
     }
+
+    if (store_disponible() && requireNamespace("proxy", quietly = TRUE)) {
+      top_df <- tryCatch({
+        emb_fn <- ragnar::embed_ollama(model = "nomic-embed-text")
+        emb_mat <- emb_fn(top$termino)
+        sim_mat <- as.matrix(proxy::simil(emb_mat, method = "cosine"))
+        dist_mat <- as.dist(1 - sim_mat)
+        hc <- hclust(dist_mat, method = "complete")
+        clusters <- cutree(hc, h = 0.4)
+        top$cluster <- clusters
+        top %>%
+          dplyr::group_by(cluster) %>%
+          dplyr::mutate(cluster_label = termino[which.max(total)]) %>%
+          dplyr::group_by(cluster_label) %>%
+          dplyr::summarise(
+            total = sum(total),
+            terminos = paste(termino, collapse = ", "),
+            .groups = "drop"
+          ) %>%
+          dplyr::arrange(total) %>%
+          dplyr::rename(termino = cluster_label)
+      }, error = function(e) NULL)
+      if (!is.null(top_df)) {
+        return(
+          plot_ly(
+            x = top_df$total,
+            y = factor(top_df$termino, levels = top_df$termino),
+            type = "bar", orientation = "h",
+            customdata = top_df$terminos,
+            marker = list(
+              color = colorRampPalette(c("#6c9bd1", "#0d6efd"))(nrow(top_df)),
+              line = list(color = "rgba(255,255,255,0)", width = 0)
+            ),
+            hovertemplate = "<b>%{y}</b><br>Frecuencia: %{x:,.0f}<br>Términos: %{customdata}<extra></extra>"
+          ) %>%
+          layout(
+            xaxis = list(title = "Frecuencia total", zeroline = FALSE, showgrid = TRUE, gridcolor = "#eee"),
+            yaxis = list(title = NULL, tickfont = list(size = 11)),
+            margin = list(l = 140, r = 30, t = 20, b = 50),
+            plot_bgcolor = "#ffffff",
+            paper_bgcolor = "#ffffff"
+          ) %>%
+          config(displayModeBar = TRUE, locale = "es")
+        )
+      }
+    }
+
     top <- top[order(top$total), ]
     plot_ly(
       x = top$total,
@@ -1652,18 +2101,276 @@ server <- function(input, output, session) {
     t
   }, striped = TRUE, hover = TRUE, sanitize.text.function = function(x) x)
 
+  # ── Chat agent ──────────────────────────────────────────────────────────────
+  chat_historial  <- reactiveVal(list())   # list of list(role, content, sql)
+  chat_procesando <- reactiveVal(FALSE)
+
+  # Placeholder to avoid breaking any leftover references
+  resumen_texto    <- reactiveVal(NULL)
+  resumen_generando <- reactiveVal(FALSE)
+
+
+  output$resumen_estado <- renderUI({ NULL })
+
+  # ── Modal: Agente de datos ───────────────────────────────────────────────────
+  observeEvent(input$btn_abrir_ia, {
+    chat_historial(list())
+    chat_procesando(FALSE)
+    f <- fechas()
+    fecha_i <- format(as.Date(f$start), "%d %b %Y")
+    fecha_f <- format(as.Date(f$end), "%d %b %Y")
+    showModal(modalDialog(
+      title = div(
+        style = "display: flex; align-items: center; gap: 10px;",
+        div(style = "width: 34px; height: 34px; background: linear-gradient(135deg,#6610f2,#0d6efd); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #fff; flex-shrink: 0; font-size: 0.95rem;",
+          icon("robot")
+        ),
+        div(
+          tags$strong("Agente de datos", style = "display: block; line-height: 1.2;"),
+          tags$span(paste(fecha_i, "\u2013", fecha_f),
+                    style = "font-size: 0.8rem; color: #6c757d; font-weight: 400;")
+        )
+      ),
+      div(
+        uiOutput("chat_mensajes_ui"),
+        div(class = "chat-input-area",
+          textInput("chat_pregunta", NULL,
+                    placeholder = "Pregunta algo sobre las noticias del per\u00edodo\u2026"),
+          tags$button(
+            id = "btn_chat_enviar", class = "btn chat-send-btn action-button",
+            icon("paper-plane")
+          )
+        ),
+        # Submit on Enter
+        tags$script(HTML("
+          $(document).on('keydown', '#chat_pregunta', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+              e.preventDefault();
+              $('#btn_chat_enviar').click();
+            }
+          });
+        "))
+      ),
+      footer = modalButton("Cerrar"),
+      size = "l",
+      easyClose = TRUE
+    ))
+  })
+
+  # ── Chip de sugerencia seleccionado ─────────────────────────────────────────
+  observeEvent(input$chat_chip, {
+    updateTextInput(session, "chat_pregunta", value = input$chat_chip)
+  })
+
+  # ── Enviar pregunta al agente ────────────────────────────────────────────────
+  observeEvent(input$btn_chat_enviar, {
+    pregunta <- trimws(if (is.null(input$chat_pregunta)) "" else input$chat_pregunta)
+    if (!nzchar(pregunta) || chat_procesando()) return()
+
+    hist <- chat_historial()
+    hist <- c(hist, list(list(role = "user", content = pregunta, sql = NULL)))
+    chat_historial(hist)
+    chat_procesando(TRUE)
+    updateTextInput(session, "chat_pregunta", value = "")
+
+    f <- fechas()
+    fecha_inicio <- f$start
+    fecha_fin    <- f$end
+    # Capturar historial ANTES de onFlushed (fuera del contexto reactivo lo pierde)
+    hist_snapshot <- chat_historial()
+
+    session$onFlushed(once = TRUE, function() {
+
+      # ── Paso 1: Generar SQL ───────────────────────────────────────────────────
+      schema_sys <- paste0(
+        "Eres un agente SQL para un dashboard de noticias de prensa chilena.\n",
+        "Per\u00edodo activo del dashboard: ", fecha_inicio, " al ", fecha_fin, ".\n\n",
+        "TABLAS DISPONIBLES (PostgreSQL):\n",
+        "  noticias(id TEXT, titulo TEXT, fuente TEXT, fecha DATE, url TEXT)  -- ~853,000 art\u00edculos\n",
+        "  titulos_terminos_diarios(fecha DATE, termino TEXT, frecuencia INTEGER)  -- frecuencia diaria de t\u00e9rminos en titulares\n",
+        "  titulos_terminos_por_medio(fecha DATE, fuente TEXT, termino TEXT, frecuencia INTEGER)\n",
+        "  mv_terminos_mensuales(fecha DATE, termino TEXT, frecuencia INTEGER)  -- agregado mensual\n",
+        "  mv_terminos_por_medio_mensuales(fecha DATE, fuente TEXT, termino TEXT, frecuencia INTEGER)\n\n",
+        "REGLAS:\n",
+        "  1. Escribe UNA sola consulta SELECT. Nada m\u00e1s.\n",
+        "  2. Usa el per\u00edodo del dashboard como filtro por defecto si el usuario no especifica fechas.\n",
+        "  3. Para buscar t\u00e9rminos usa: LOWER(termino) ILIKE '%palabra%'\n",
+        "  4. A\u00f1ade siempre LIMIT (m\u00e1x 30 para listas, 1 para totales).\n",
+        "  5. Responde SOLO con el SQL puro, sin explicaciones ni bloques markdown."
+      )
+
+      # Incluir último intercambio para soporte de preguntas de seguimiento
+      msgs_sql  <- list(list(role = "system", content = schema_sys))
+      user_msgs <- Filter(function(m) m$role == "user", hist_snapshot)
+      if (length(user_msgs) >= 2L) {
+        prev_q <- user_msgs[[length(user_msgs) - 1L]]$content
+        msgs_sql <- c(msgs_sql,
+          list(list(role = "user",      content = prev_q)),
+          list(list(role = "assistant", content = "[SQL generado]"))
+        )
+      }
+      msgs_sql <- c(msgs_sql, list(list(role = "user", content = pregunta)))
+
+      sql_raw <- tryCatch({
+        resp <- httr2::request("http://localhost:11434/api/chat") |>
+          httr2::req_body_json(list(
+            model    = "qwen2.5:3b",
+            stream   = FALSE,
+            messages = msgs_sql,
+            options  = list(temperature = 0.05, num_predict = 250L)
+          )) |>
+          httr2::req_timeout(60) |>
+          httr2::req_perform()
+        httr2::resp_body_json(resp)$message$content
+      }, error = function(e) NULL)
+
+      # Limpiar y validar SQL
+      sql_clean <- if (!is.null(sql_raw)) {
+        s <- gsub("```sql|```", "", sql_raw)
+        s <- trimws(s)
+        m <- regmatches(s, regexpr("(?i)SELECT[\\s\\S]+", s, perl = TRUE))
+        if (length(m) > 0L &&
+            !grepl("(?i)(DROP|DELETE|INSERT|UPDATE|ALTER|CREATE|TRUNCATE|GRANT|REVOKE)", m[1L])) {
+          sq <- m[1L]
+          if (!grepl("(?i)LIMIT", sq)) paste(sq, "LIMIT 30") else sq
+        } else NULL
+      } else NULL
+
+      # ── Paso 2: Ejecutar SQL ──────────────────────────────────────────────────
+      resultado_sql <- if (!is.null(sql_clean)) {
+        con <- poolCheckout(pool)
+        res <- tryCatch(
+          DBI::dbGetQuery(con, sql_clean),
+          error = function(e) list(error = conditionMessage(e))
+        )
+        poolReturn(con)
+        res
+      } else NULL
+
+      # ── Paso 3: Sintetizar respuesta ──────────────────────────────────────────
+      respuesta <- if (is.null(sql_clean) || is.null(resultado_sql)) {
+        "No pude formular una consulta para esa pregunta. Intenta reformularla con m\u00e1s detalle."
+      } else if (is.list(resultado_sql) && !is.data.frame(resultado_sql) && !is.null(resultado_sql$error)) {
+        paste0("Error al consultar la base de datos: ", resultado_sql$error)
+      } else if (is.data.frame(resultado_sql) && nrow(resultado_sql) == 0L) {
+        "La consulta no devuelve resultados para ese per\u00edodo o t\u00e9rmino."
+      } else {
+        data_txt <- paste(capture.output(print(resultado_sql, row.names = FALSE)), collapse = "\n")
+        synth_sys <- paste(
+          "Eres un analista de prensa chilena. Responde la pregunta en espa\u00f1ol,",
+          "de forma directa y concisa (2-4 oraciones). Basa la respuesta exclusivamente",
+          "en los datos proporcionados. Menciona cifras concretas cuando estén disponibles.",
+          "No expliques el SQL ni menciones tablas de base de datos."
+        )
+        tryCatch({
+          resp2 <- httr2::request("http://localhost:11434/api/chat") |>
+            httr2::req_body_json(list(
+              model    = "qwen2.5:3b",
+              stream   = FALSE,
+              messages = list(
+                list(role = "system", content = synth_sys),
+                list(role = "user",   content = paste0(
+                  "Pregunta: ", pregunta, "\n\nDatos:\n", data_txt
+                ))
+              ),
+              options  = list(temperature = 0.3, num_predict = 300L)
+            )) |>
+            httr2::req_timeout(60) |>
+            httr2::req_perform()
+          httr2::resp_body_json(resp2)$message$content
+        }, error = function(e) paste0("Error al conectar con Ollama: ", conditionMessage(e)))
+      }
+
+      hist2 <- isolate(chat_historial())
+      hist2 <- c(hist2, list(list(role = "assistant", content = respuesta, sql = sql_clean)))
+      chat_historial(hist2)
+      chat_procesando(FALSE)
+    })
+  })
+
+  # ── Renderizar el chat ───────────────────────────────────────────────────────
+  output$chat_mensajes_ui <- renderUI({
+    hist       <- chat_historial()
+    procesando <- chat_procesando()
+
+    # Estado inicial: chips de sugerencia
+    if (length(hist) == 0L && !procesando) {
+      sugerencias <- c(
+        "\u00bfCu\u00e1les son los t\u00e9rminos m\u00e1s frecuentes del per\u00edodo?",
+        "\u00bfQu\u00e9 medio public\u00f3 m\u00e1s noticias?",
+        "\u00bfCu\u00e1ntas noticias hay en total?",
+        "\u00bfCu\u00e1l fue el t\u00e9rmino m\u00e1s mencionado cada mes?"
+      )
+      return(div(class = "chat-messages", style = "justify-content: center;",
+        tags$p(class = "chat-welcome",
+               "Puedes preguntarme sobre las noticias del per\u00edodo seleccionado:"),
+        div(class = "chat-chips",
+          lapply(sugerencias, function(q) {
+            tags$button(class = "chip-btn",
+              onclick = paste0('Shiny.setInputValue("chat_chip","',
+                               gsub('"', '\\\\"', q, fixed = TRUE),
+                               '",{priority:"event"})'),
+              q)
+          })
+        )
+      ))
+    }
+
+    # Mensajes
+    bubbles <- lapply(hist, function(m) {
+      if (m$role == "user") {
+        div(class = "chat-msg user",
+          div(class = "chat-bubble", m$content)
+        )
+      } else {
+        div(class = "chat-msg assistant",
+          div(class = "chat-avatar", icon("robot")),
+          div(
+            div(class = "chat-bubble", m$content),
+            if (!is.null(m$sql) && nzchar(m$sql))
+              tags$details(
+                tags$summary(class = "chat-sql-toggle", "Ver SQL generado"),
+                div(class = "chat-sql-code", m$sql)
+              )
+            else NULL
+          )
+        )
+      }
+    })
+
+    if (procesando) {
+      bubbles <- c(bubbles, list(
+        div(class = "chat-msg assistant",
+          div(class = "chat-avatar", icon("robot")),
+          div(class = "chat-bubble chat-typing",
+            tags$span(), tags$span(), tags$span()
+          )
+        )
+      ))
+    }
+
+    tagList(
+      div(class = "chat-messages", id = "chat-msgs-box", bubbles),
+      tags$script("(function(){ var b=document.getElementById('chat-msgs-box'); if(b) b.scrollTop=b.scrollHeight; })();")
+    )
+  })
+
+  output$resumen_periodo_ui <- renderUI({ NULL })
+
   # ---- UI y gráfico pestaña Medios: panel de términos ----
   output$selector_terminos_medios <- renderUI({
     disponibles <- terminos_medios_disponibles()
+    anadidos    <- terminos_anadidos_por_clic_medios()
     if (length(disponibles) == 0) return(NULL)
     choices <- setNames(disponibles, disponibles)
     top <- top_10_medios()
     current <- isolate(input$terminos_medios)
-    if (!is.null(current) && length(current) > 0) {
-      selected <- intersect(current, disponibles)
+    top_sel <- if (!is.null(current) && length(current) > 0) {
+      intersect(current, top$termino)
     } else {
-      selected <- if (nrow(top) >= 2) head(top$termino, 2) else if (nrow(top) == 1) top$termino else head(disponibles, min(2L, length(disponibles)))
+      if (nrow(top) >= 2) head(top$termino, 2) else if (nrow(top) == 1) top$termino else character(0)
     }
+    selected <- unique(c(top_sel, intersect(anadidos, disponibles)))
     if (length(selected) == 0) selected <- head(disponibles, min(2L, length(disponibles)))
     div(class = "term-chips-box",
       tags$label(class = "control-label", style = "display: block; margin-bottom: 6px;",
@@ -1678,6 +2385,13 @@ server <- function(input, output, session) {
       )
     )
   })
+
+  observeEvent(input$terminos_medios, {
+    anadidos <- terminos_anadidos_por_clic_medios()
+    desmarcados <- setdiff(anadidos, input$terminos_medios)
+    if (length(desmarcados) > 0)
+      terminos_anadidos_por_clic_medios(setdiff(anadidos, desmarcados))
+  }, ignoreInit = TRUE, ignoreNULL = FALSE)
 
   output$frecuencia_termino_medios <- renderUI({
     busq <- trimws(if (is.null(input$busqueda_termino_medios)) "" else input$busqueda_termino_medios)
@@ -1737,9 +2451,6 @@ server <- function(input, output, session) {
     term <- input$termo_añadir_medios
     if (is.null(term) || !nzchar(trimws(term))) return()
     terminos_anadidos_por_clic_medios(unique(c(terminos_anadidos_por_clic_medios(), term)))
-    current <- input$terminos_medios
-    if (is.null(current)) current <- character(0)
-    updateCheckboxGroupInput(session, "terminos_medios", selected = unique(c(current, term)))
   })
 
   # Gráfico: repetición de conceptos por medio (barras agrupadas)
@@ -1921,6 +2632,11 @@ server <- function(input, output, session) {
         layout(xaxis = list(showticklabels = FALSE), yaxis = list(showticklabels = FALSE)) %>%
         config(displayModeBar = FALSE))
     }
+    PALETA_COMUNIDADES <- c(
+      "#e74c3c", "#3498db", "#2ecc71", "#f39c12", "#9b59b6",
+      "#1abc9c", "#e67e22", "#e91e63", "#00bcd4", "#8bc34a",
+      "#d35400", "#795548", "#607d8b", "#673ab7", "#ff9800"
+    )
     todos_nodos <- unique(c(datos$termino_a, datos$termino_b))
     g <- igraph::graph_from_data_frame(
       datos[, c("termino_a", "termino_b", "peso")],
@@ -1931,6 +2647,12 @@ server <- function(input, output, session) {
     coords <- igraph::layout_with_fr(g)
     nodo_ids <- igraph::V(g)$name
     grado <- igraph::degree(g)
+    comunidades <- tryCatch(
+      igraph::cluster_louvain(g),
+      error = function(e) igraph::cluster_walktrap(g)
+    )
+    membresia <- igraph::membership(comunidades)
+    n_com <- max(membresia, 1L)
     edge_x <- numeric(0)
     edge_y <- numeric(0)
     for (k in seq_len(igraph::ecount(g))) {
@@ -1940,36 +2662,85 @@ server <- function(input, output, session) {
       edge_x <- c(edge_x, coords[i1, 1], coords[i2, 1], NA)
       edge_y <- c(edge_y, coords[i1, 2], coords[i2, 2], NA)
     }
-    plot_ly() %>%
+    p <- plot_ly() %>%
       add_trace(
         x = edge_x, y = edge_y,
         type = "scatter", mode = "lines",
         line = list(color = "rgba(160,160,190,0.4)", width = 1),
         hoverinfo = "skip", showlegend = FALSE
-      ) %>%
-      add_trace(
-        x = coords[, 1], y = coords[, 2],
+      )
+    for (com in seq_len(n_com)) {
+      idx <- which(membresia == com)
+      if (length(idx) == 0L) next
+      sz <- 7 + 14 * (grado[idx] / max(grado, 1L))
+      color_com <- PALETA_COMUNIDADES[(com - 1L) %% length(PALETA_COMUNIDADES) + 1L]
+      p <- p %>% add_trace(
+        x = coords[idx, 1], y = coords[idx, 2],
         type = "scatter", mode = "markers+text",
-        text = nodo_ids,
+        name = paste0("Grupo ", com),
+        text = nodo_ids[idx],
         textposition = "top center",
-        textfont = list(size = 9, color = "#333"),
+        textfont = list(size = 11, color = "#333"),
         marker = list(
-          size = 7 + 14 * (grado / max(grado, 1L)),
-          color = "#0d6efd",
-          opacity = 0.8,
+          size = sz,
+          color = color_com,
+          opacity = 0.85,
           line = list(color = "#ffffff", width = 1.5)
         ),
-        hovertemplate = paste0(nodo_ids, "<br>Conexiones: ", grado, "<extra></extra>"),
-        showlegend = FALSE
-      ) %>%
-      layout(
-        xaxis = list(visible = FALSE, showgrid = FALSE, zeroline = FALSE),
-        yaxis = list(visible = FALSE, showgrid = FALSE, zeroline = FALSE),
-        margin = list(l = 10, r = 10, t = 10, b = 10),
-        plot_bgcolor = "#fafafa",
-        paper_bgcolor = "#fafafa"
-      ) %>%
-      config(displayModeBar = FALSE)
+        customdata = grado[idx],
+        hovertemplate = paste0("<b>%{text}</b><br>Conexiones: %{customdata}<extra></extra>"),
+        showlegend = TRUE
+      )
+    }
+    if (store_disponible() && !is.null(input$umbral_semantico)) {
+      emb_fn <- tryCatch(ragnar::embed_ollama(model = "nomic-embed-text"), error = function(e) NULL)
+      if (!is.null(emb_fn)) {
+        emb_matrix <- tryCatch(emb_fn(nodo_ids), error = function(e) NULL)
+        if (!is.null(emb_matrix) && requireNamespace("proxy", quietly = TRUE)) {
+          sim_mat <- as.matrix(proxy::simil(emb_matrix, method = "cosine"))
+          umbral <- input$umbral_semantico
+          pares_existentes <- paste(datos$termino_a, datos$termino_b)
+          sem_x <- numeric(0)
+          sem_y <- numeric(0)
+          for (ia in seq_len(nrow(sim_mat) - 1L)) {
+            for (ib in seq(ia + 1L, ncol(sim_mat))) {
+              if (sim_mat[ia, ib] >= umbral) {
+                par_ab <- paste(nodo_ids[ia], nodo_ids[ib])
+                par_ba <- paste(nodo_ids[ib], nodo_ids[ia])
+                if (!par_ab %in% pares_existentes && !par_ba %in% pares_existentes) {
+                  sem_x <- c(sem_x, coords[ia, 1], coords[ib, 1], NA)
+                  sem_y <- c(sem_y, coords[ia, 2], coords[ib, 2], NA)
+                }
+              }
+            }
+          }
+          if (length(sem_x) > 0L) {
+            p <- p %>% add_trace(
+              x = sem_x, y = sem_y,
+              type = "scatter", mode = "lines",
+              name = "Relación semántica",
+              line = list(color = "rgba(13,110,253,0.3)", width = 1.5, dash = "dot"),
+              hoverinfo = "skip", showlegend = TRUE
+            )
+          }
+        }
+      }
+    }
+    p %>% layout(
+      autosize = TRUE,
+      legend = list(
+        orientation = "v", x = 0.01, xanchor = "left", y = 0.99, yanchor = "top",
+        title = list(text = "Comunidades"),
+        bgcolor = "rgba(255,255,255,0.82)", bordercolor = "#e2e8f0", borderwidth = 1,
+        font = list(size = 10)
+      ),
+      xaxis = list(visible = FALSE, showgrid = FALSE, zeroline = FALSE),
+      yaxis = list(visible = FALSE, showgrid = FALSE, zeroline = FALSE),
+      margin = list(l = 10, r = 10, t = 20, b = 10),
+      plot_bgcolor = "#fafafa",
+      paper_bgcolor = "#fafafa"
+    ) %>%
+      config(displayModeBar = FALSE, responsive = TRUE)
   })
 
   # Reactivo: sentimiento por fuente
@@ -2472,6 +3243,7 @@ server <- function(input, output, session) {
   outputOptions(output, "grafico_evolucion_volumen_por_medio",  suspendWhenHidden = FALSE)
   outputOptions(output, "grafico_terminos_por_medio",           suspendWhenHidden = FALSE)
   outputOptions(output, "grafico_evolucion_terminos_por_medio", suspendWhenHidden = FALSE)
+  outputOptions(output, "resumen_periodo_ui",                   suspendWhenHidden = FALSE)
 }
 
 # ------------------------------------------------------------------------------

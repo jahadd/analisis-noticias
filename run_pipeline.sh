@@ -144,7 +144,6 @@ export FECHA_DESDE_SCRAPING
 # ------------------------------------------------------------------------------
 SCRAPERS_DIARIOS=(
   scraping_biobio_api.r
-  scraping_lahora_api.r
   scraping_24horas.r
   scraping_adnradio.r
   scraping_agricultura.r
@@ -242,6 +241,7 @@ log "=== FASE 2: ANÁLISIS ==="
 
 run_r "analisis/run_analisis_ngramas.R"       "Ngramas"       || true
 run_r "analisis/run_analisis_titulos.R"       "Titulos"       || true
+run_r "analisis/run_embeddings.R"             "Embeddings RAG" || true
 run_r "analisis/run_analisis_coocurrencia.R"  "Coocurrencia"  || true
 
 # Refrescar vistas materializadas mensuales (para queries rápidas en el dashboard)

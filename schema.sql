@@ -246,3 +246,33 @@ CREATE TABLE IF NOT EXISTS cuerpo_ngramas_diarios (
 CREATE INDEX IF NOT EXISTS idx_cuerpo_ngramas_diarios_fecha ON cuerpo_ngramas_diarios(fecha DESC, tipo);
 
 COMMENT ON TABLE cuerpo_ngramas_diarios IS 'N-gramas diarios del cuerpo de artículos (tipo=2 bigramas, tipo=3 trigramas); origen: run_analisis_cuerpo.R.';
+
+-- ---------------------------------------------------------------------------
+-- 16. Tabla: registro de artículos indexados en el vector store RAG
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS noticias_embeddings_meta (
+    id              TEXT PRIMARY KEY REFERENCES noticias(id) ON DELETE CASCADE,
+    embebido_en     TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    modelo          VARCHAR(100) DEFAULT 'nomic-embed-text',
+    store_version   INTEGER DEFAULT 1
+);
+
+CREATE INDEX IF NOT EXISTS idx_noticias_embeddings_meta_modelo ON noticias_embeddings_meta(modelo);
+
+COMMENT ON TABLE noticias_embeddings_meta IS 'Registro de artículos indexados en el vector store RAG.';
+
+-- ---------------------------------------------------------------------------
+-- 17. Tabla: clusters semánticos de artículos por fecha
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS noticias_clusters (
+    fecha           DATE NOT NULL,
+    cluster_id      INTEGER NOT NULL,
+    id_noticia      TEXT NOT NULL REFERENCES noticias(id) ON DELETE CASCADE,
+    score_centroide FLOAT,
+    CONSTRAINT pk_noticias_clusters PRIMARY KEY (fecha, id_noticia)
+);
+
+CREATE INDEX IF NOT EXISTS idx_noticias_clusters_fecha   ON noticias_clusters(fecha DESC);
+CREATE INDEX IF NOT EXISTS idx_noticias_clusters_cluster ON noticias_clusters(fecha, cluster_id);
+
+COMMENT ON TABLE noticias_clusters IS 'Clusters semánticos de artículos por fecha; origen: run_embeddings.R.';

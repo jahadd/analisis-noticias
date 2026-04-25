@@ -348,8 +348,10 @@ ya_scrapeado_en_db <- function(url, con) {
   fmts <- c(
     "%Y-%m-%d",   # ISO:       2026-04-01
     "%Y/%m/%d",   #            2026/04/01
+    "%Y %m %d",   # año-mes-dia con espacios (elsiglo, lanacion, lacuarta, exante): 2026 4 1
     "%d-%m-%Y",   # ES largo:  01-04-2026
     "%d/%m/%Y",   # ES largo:  01/04/2026
+    "%d.%m.%Y",   # puntos:    14.4.2025 (cnnchile)
     "%d-%m-%y",   # ES corto:  31-03-20
     "%d/%m/%y",   # ES corto:  31/03/20
     "%d %m %Y",   # 24horas:   5 3 2026
@@ -370,6 +372,10 @@ ya_scrapeado_en_db <- function(url, con) {
 }
 
 guardar_noticias_en_postgres <- function(df, con) {
+  # Normalizar entrada: aceptar list (salida de map() sin list_rbind()) además de data frames
+  if (is.list(df) && !is.data.frame(df)) {
+    df <- dplyr::bind_rows(Filter(Negate(is.null), df))
+  }
   if (is.null(df) || nrow(df) == 0L) {
     message("guardar_noticias_en_postgres: sin datos para guardar.")
     return(invisible(0L))
@@ -684,4 +690,32 @@ chrome_navegar <- function(chrome, url, timeout = 60, reintentos = 2) {
       }
     })
   }
+}
+
+# ==============================================================================
+# Paginación dinámica por fuente
+# ==============================================================================
+
+# Devuelve la fecha del último artículo para una fuente dada.
+# Si no hay datos, retorna Sys.Date() - default_dias.
+ultima_fecha_fuente <- function(fuente, con, default_dias = 7L) {
+  tryCatch({
+    res <- DBI::dbGetQuery(con,
+      "SELECT MAX(fecha) AS ultima FROM noticias WHERE fuente = $1",
+      params = list(fuente))
+    ultima <- res$ultima[[1]]
+    if (!is.null(ultima) && !is.na(ultima)) as.Date(ultima)
+    else Sys.Date() - as.integer(default_dias)
+  }, error = function(e) Sys.Date() - as.integer(default_dias))
+}
+
+# Convierte los días sin datos en número de páginas a scrapear.
+# pags_por_dia: páginas por día de atraso (1.5 ≈ 1 página cubre ~2 días típicos)
+# min_pags: mínimo aunque corra todos los días
+# max_pags: techo para no scrapear demasiado en recuperaciones largas
+n_paginas_fuente <- function(fuente, con, pags_por_dia = 1.5,
+                              min_pags = 2L, max_pags = 15L) {
+  ultima <- ultima_fecha_fuente(fuente, con)
+  dias   <- as.integer(Sys.Date() - ultima)
+  as.integer(max(min_pags, min(ceiling(dias * pags_por_dia), max_pags)))
 }
