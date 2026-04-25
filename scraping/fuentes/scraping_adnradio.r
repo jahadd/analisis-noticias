@@ -76,10 +76,11 @@ resultados_adnradio <- map(unique(resultados_links$enlace), \(enlace) {
     )
     if (is.null(noticia)) return(NULL)
 
-    noticia_titulo <- noticia |> 
-      html_elements("header") |> 
-      html_elements("h1") |> 
-      html_text()
+    noticia_titulo <- noticia |>
+      html_elements("header") |>
+      html_elements("h1") |>
+      html_text() |>
+      purrr::pluck(1)
     
     noticia_bajada <- noticia |>
       html_elements("header") |> 
