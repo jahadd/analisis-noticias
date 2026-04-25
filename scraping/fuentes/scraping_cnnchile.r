@@ -10,7 +10,8 @@ con <- conectar_db()
 
 #enlaces ----
 # secciones <- "https://www.cnnchile.com/category/pais/"
-secciones <- paste0("https://www.cnnchile.com/category/pais/page/", 1:5)
+n_pags <- n_paginas_fuente("cnnchile", con)
+secciones <- paste0("https://www.cnnchile.com/category/pais/page/", seq_len(n_pags))
 
 # para descargar noticias anteriores
 # secciones <- paste0("https://www.cnnchile.com/category/pais/page/", 100:1500)
@@ -57,14 +58,14 @@ resultados_links <- map_df(secciones, \(enlace_seccion) {
 resultados_cnnchile <- map(resultados_links$enlace, \(enlace) {
   #enlace <- resultados_links$enlace[6]
   # enlace <- .x
-  
+
   #revisar si existe la página
-  if (is.null(revisar_url(enlace))) return(NULL) 
-  
+  if (is.null(revisar_url(enlace))) return(NULL)
+
   # desistir si ya se scrapeó
   if (ya_scrapeado_en_db(enlace, con)) return(NULL)
-  
-  
+
+  tryCatch({
   #scraping
   noticia <- enlace |> bow() |> scrape()
   
@@ -115,6 +116,10 @@ resultados_cnnchile <- map(resultados_links$enlace, \(enlace) {
                         "url" = noticia_url)
   
   return(noticia_tabla)
+  }, error = function(e) {
+    message("Error en scraping cnnchile: ", e)
+    return(NULL)
+  })
 })
 
 # guardar ----
