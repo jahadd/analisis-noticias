@@ -169,7 +169,8 @@ SCRAPERS_DIARIOS=(
   scraping_publimetro.r
   scraping_quintopoder.R
   scraping_radiouchile.r
-  scraping_redgol.R
+  # redgol eliminado 2026-07-04: el sitio cambió y el scraper extraía 0 noticias
+  # (datos históricos hasta nov 2024 se conservan en la BD)
   scraping_t13.r
   scraping_theclinic.r
 )

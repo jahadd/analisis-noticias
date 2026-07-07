@@ -161,10 +161,13 @@ enlaces_noticias_recientes <- c(enlaces_0,
   enlaces_b,
   enlaces_c) |> 
   unique() |> 
-  str_subset("#comentarios", negate = TRUE) |> 
-  str_remove("//") |> 
-  str_replace("^/noticias/", "www.emol.com/noticias/") |> 
-  str_replace("^www", "https://www")
+  str_subset("#comentarios", negate = TRUE) |>
+  # normalizar a URL absoluta: los href pueden venir absolutos (https://...),
+  # protocol-relative (//www...) o root-relative (/noticias/...).
+  str_replace("^//", "https://") |>             # //www.emol.com/...  -> https://www.emol.com/...
+  str_replace("^/", "https://www.emol.com/") |> # /noticias/...       -> https://www.emol.com/noticias/...
+  str_replace("^www\\.", "https://www.") |>     # www.emol.com/...    -> https://www.emol.com/...
+  str_subset("^https?://")                      # descartar javascript:, mailto:, anclas, etc.
 
   
 # scraping ----

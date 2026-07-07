@@ -42,14 +42,18 @@ resultados_enlaces <- map(enlaces, \(enlace) {
     if (is.null(revisar_url(enlace))) return(NULL)  
     
     sesion <- session(enlace) |> read_html()
-    
-    noticias <- sesion |> 
-      html_elements(".article-title") |> 
-      html_elements("a") |> 
+
+    # rediseño 2026: las noticias están en .story-card__headline a (enlaces relativos)
+    noticias <- sesion |>
+      html_elements(".story-card__headline a") |>
       html_attr("href")
-    
-    noticias <- paste0("https://www.lacuarta.com", noticias)
-    
+
+    noticias <- noticias[!is.na(noticias)]
+    noticias <- noticias[str_detect(noticias, "/noticia/")]
+    noticias <- ifelse(str_starts(noticias, "http"),
+                       noticias,
+                       paste0("https://www.lacuarta.com", noticias))
+
     message(glue("Se obtuvieron {length(noticias)} noticias en {enlace}"))
     return(noticias)
   },
@@ -76,33 +80,20 @@ resultados_noticias <- map_df(enlaces_noticias, \(enlace) {
     if (ya_scrapeado_en_db(enlace, con)) return(NULL)
     
     noticia <- bow(enlace) |> scrape()
-    
-    #elementos
-    titulo <- noticia |> html_elements(".story-title") |> html_elements("h1") |> html_text2()
-    
-    bajada <- noticia |> html_elements(".story-subtitle") |> html_elements(".h3") |> html_text2()
-    
-    fecha_texto <- noticia |> html_elements(".story-subtitle") |> html_elements(".date") |> html_text2()
-    
-    mes <- fecha_texto |> str_extract("(?<=(de ))\\w+") |> 
-      recode("enero" = "1", "febrero" = "2", "marzo" = "3",
-             "abril" = "4", "mayo" = "5", "junio" = "6",
-             "julio" = "7", "agosto" = "8", "septiembre" = "9",
-             "octubre" = "10", "noviembre" = "11", "diciembre" = "12")
-    
-    año <- fecha_texto |> str_extract("\\d{4}$")
-    
-    dia <- fecha_texto |> str_extract("\\d+")
-    
-    fecha <- paste(año, mes, dia)
 
-    # Fallback: extraer fecha ISO de la URL (formato .../YYYY-MM-DD/...)
-    if (length(fecha) == 0 || is.na(suppressWarnings(as.Date(trimws(fecha), format = "%Y %m %d")))) {
-      fecha_url <- str_extract(enlace, "\\d{4}-\\d{2}-\\d{2}")
-      if (!is.na(fecha_url)) fecha <- fecha_url
+    #elementos (rediseño 2026)
+    titulo <- noticia |> html_elements("h1") |> html_text2() |> head(1)
+
+    bajada <- noticia |> html_elements("meta[name='description']") |> html_attr("content") |> head(1)
+
+    # fecha desde meta ISO (o <time datetime>), formato YYYY-MM-DD
+    fecha <- noticia |> html_elements("meta[property='article:published_time']") |> html_attr("content") |> head(1)
+    if (length(fecha) == 0 || is.na(fecha) || !nzchar(fecha)) {
+      fecha <- noticia |> html_elements("time") |> html_attr("datetime") |> head(1)
     }
+    fecha <- str_extract(fecha, "\\d{4}-\\d{2}-\\d{2}")
 
-    cuerpo <- noticia |> html_elements(".body") |> html_elements("p") |> html_text2() |> paste(collapse = "\n")
+    cuerpo <- noticia |> html_elements("p") |> html_text2() |> paste(collapse = "\n")
     
     #unir
     noticia_data <- tibble("titulo" = titulo |> validar_elementos(),

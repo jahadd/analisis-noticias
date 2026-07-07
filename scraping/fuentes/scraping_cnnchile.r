@@ -33,13 +33,11 @@ resultados_links <- map_df(secciones, \(enlace_seccion) {
     scrape()
   
   noticias_seccion_links <- noticias_seccion |>
-    html_elements(".article-list") |>
-    # html_elements(".inner-item") |>
-    #html_elements("h4") |>
-    html_elements("a") |>
+    html_elements(".main-card__title a") |>   # rediseño 2026
     html_attr("href") |>
-    unique() |> 
+    unique() |>
     str_subset("/page/", negate = TRUE)
+  noticias_seccion_links <- noticias_seccion_links[!is.na(noticias_seccion_links)]
   
   noticias_links <- tibble("enlace" = noticias_seccion_links,
                            "origen" = enlace_seccion)
@@ -69,40 +67,27 @@ resultados_cnnchile <- map(resultados_links$enlace, \(enlace) {
   #scraping
   noticia <- enlace |> bow() |> scrape()
   
+  # rediseño 2026
   noticia_titulo <- noticia |>
-    # html_elements(".main-single-header") |>
-    html_elements(".main-single-body") |> 
-    html_elements("h1") |> 
-    # html_elements(".main-single-header__title") |>
-    html_text()
-  
-  # noticia_fecha <- noticia |>
-  #   html_elements(".main-single-about") |>
-  #   html_elements(".main-single__date") |>
-  #   html_text()
-  
+    html_elements("h1") |>
+    html_text2() |>
+    head(1)
+
   noticia_fecha <- noticia |>
-    html_elements(".info") |>
-    html_elements("h3") |>
-    html_text() |> 
-    str_extract("\\d+\\.\\d+\\.\\d+")
-  
-  # noticia_bajada <- noticia |>
-  #   html_elements(".main-single-header") |>
-  #   html_elements("p") |>
-  #   html_text()
-  
+    html_elements("time") |>
+    html_attr("datetime") |>
+    head(1) |>
+    str_extract("[0-9]{4}-[0-9]{2}-[0-9]{2}")
+
   noticia_bajada <- noticia |>
-    html_elements(".epigraph") |>
-    # html_elements("p") |>
-    html_text()
-  
+    html_elements("meta[name='description']") |>
+    html_attr("content") |>
+    head(1)
+
   #texto
   noticia_texto <- noticia |>
-    html_elements(".main-single-body") |>
-    html_elements("div") |>
     html_elements("p") |>
-    html_text() |>
+    html_text2() |>
     paste(collapse = "\n")
   
   noticia_url <- enlace

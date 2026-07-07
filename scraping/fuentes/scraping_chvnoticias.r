@@ -107,12 +107,21 @@ resultados_chvnoticias <- map_df(enlaces_chvnoticias, \(enlace) {
   
   # x_fecha <- paste0(c(codigo[1:4], "-", codigo[5:6], "-", codigo[7:8]), collapse = "")
   
-  x_fecha <- noticia |>
-    html_elements(".date") |>
-    html_text2() |>
-    str_extract("\\d+/\\d+/\\d+")
+  # rediseño 2026: OJO el atributo <time datetime> está fijo/erróneo (siempre 2025-12-08).
+  # La fecha real está en el JSON-LD ("datePublished").
+  ld <- noticia |>
+    html_elements('script[type="application/ld+json"]') |>
+    html_text() |> paste(collapse = " ")
+  x_fecha <- ld |>
+    str_extract('datePublished"\\s*:\\s*"[0-9]{4}-[0-9]{2}-[0-9]{2}') |>
+    str_extract("[0-9]{4}-[0-9]{2}-[0-9]{2}")
 
-  # Fallback: extraer fecha de la URL (formato .../YYYY/MM/DD/...)
+  # Fallback: texto visible del <time> (formato "DD/ MM/ YYYY HH:MM")
+  if (length(x_fecha) == 0 || is.na(x_fecha[1])) {
+    tt <- noticia |> html_elements("time") |> html_text2() |> head(1)
+    x_fecha <- tt |> str_extract("\\d{1,2}/\\s*\\d{1,2}/\\s*\\d{4}") |> str_remove_all("\\s")
+  }
+  # Fallback: fecha en la URL (formato .../YYYY/MM/DD/...)
   if (length(x_fecha) == 0 || is.na(x_fecha[1])) {
     x_fecha <- str_extract(enlace, "\\d{4}/\\d{2}/\\d{2}")
   }
@@ -127,31 +136,11 @@ resultados_chvnoticias <- map_df(enlaces_chvnoticias, \(enlace) {
   #   html_text2() |> 
   #   paste(collapse = "\n")
   
-  # hay noticias que solo tienen una bajada lateral, otras tienen un cuerpo extenso
-  x_texto_a <- noticia |> 
-    html_elements(".description--noticias") |> 
-    html_elements("p") |> 
-    html_text2() |> 
+  # rediseño 2026: cuerpo en los <p> del artículo
+  x_texto <- noticia |>
+    html_elements("p") |>
+    html_text2() |>
     paste(collapse = "\n")
-  
-# cuerpo de noticia normal
-  x_texto_b <- noticia |> 
-    html_elements(".CUERPO") |> 
-    html_elements("p") |> 
-    html_text2() |> 
-    paste(collapse = "\n")
-  
-  # unir ambos textos
-  x_texto <- paste(x_texto_a, x_texto_b,
-                   collapse = "\n")
-  
-  if (length(x_texto) == 0) {
-    x_texto <- noticia |> 
-      html_elements(".the-single-box") |> 
-      html_elements("p") |> 
-      html_text2() |> 
-      paste(collapse = "\n")
-  }
   
   resultado <- tibble("titulo" = x_titulo[1],
                       "fecha" = x_fecha[1],

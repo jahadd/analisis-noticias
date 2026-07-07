@@ -59,19 +59,20 @@ resultados_enlaces <- map(enlaces, \(enlace) {
   message("scraping ", enlace)
   
   tryCatch({
-  inicio <- Sys.time()
-  chrome_navegar(chrome, enlace)
-  body <- chrome$Runtime$evaluate("document.querySelector('html').outerHTML")$result$value # obtener datos
+  # SPA (rediseño 2026): navegar y esperar el render JS (loadEventFired no basta)
+  chrome$Page$navigate(enlace)
+  Sys.sleep(7)
+  chrome$Runtime$evaluate("window.scrollTo(0, document.body.scrollHeight)")
+  Sys.sleep(2)
+  body <- chrome$Runtime$evaluate('document.querySelector("html").outerHTML')$result$value
   sitio <- read_html(body)
-  final <- Sys.time()
-  Sys.sleep((final-inicio)*3) # espera
-  
+
   all_hrefs <- sitio |>
     html_elements("a") |>
     html_attr("href")
 
-  # Nuevo formato URL: /titulo-aNNNN (slug + -a + ID numérico)
-  noticias_enlaces <- all_hrefs[grepl("-a\\d+", all_hrefs)] |> unique()
+  # Formato URL artículos (rediseño 2026): /seccion/slug-nNNNNN
+  noticias_enlaces <- all_hrefs[grepl("-n\\d{4,}", all_hrefs)] |> unique()
 
   # Normalizar: eliminar dominio si viene como URL absoluta
   noticias_enlaces <- sub("https?://(www\\.)?eldesconcierto\\.cl", "", noticias_enlaces)
@@ -112,41 +113,28 @@ resultados_eldesconcierto <- map_df(enlaces_eldesconcierto, \(enlace) {
     if (ya_scrapeado_en_db(enlace, con)) return(NULL)
     
     
-    inicio <- Sys.time()
-    chrome_navegar(chrome, enlace)
-    body <- chrome$Runtime$evaluate("document.querySelector('html').outerHTML")$result$value # obtener datos
-    noticia <- read_html(body)
-    final <- Sys.time()
-    Sys.sleep((final-inicio)*3) # espera
-    
-    x_titulo <- noticia |> 
-      # html_elements("h3") |> 
+    # SPA: navegar y esperar render
+    chrome$Page$navigate(enlace)
+    Sys.sleep(6)
+    html_raw <- chrome$Runtime$evaluate('document.querySelector("html").outerHTML')$result$value
+    noticia <- read_html(html_raw)
+
+    x_titulo <- noticia |>
       html_elements("h1") |>
-      html_text2() |> 
-      pluck(1)
-    
-    fecha_a <- noticia |> 
-      html_elements("meta") |> 
-      html_attr("name")
-    
-    fecha_b <- noticia |> 
-      html_elements("meta") |> 
-      html_attr("content")
-    
-    x_fecha <- tibble(name = fecha_a,
-           content = fecha_b) |> 
-      filter(name == "date") |> 
-      pull(content) |> 
-      stringr::str_extract("\\d+-\\d+-\\d{2}")
-    
-    x_bajada <- noticia |> 
-      html_elements(".text-gray-700") |> 
-      html_text2()
-    
-    x_texto <- noticia |> 
-      html_elements(".single-post__content") |> 
-      html_elements("p") |> 
-      html_text2() |> 
+      html_text2() |>
+      pluck(1, .default = NA_character_)
+
+    # fecha desde JSON-LD ("datePublished":"YYYY-MM-DD...")
+    x_fecha <- str_extract(html_raw, '(?<="datePublished":")[0-9]{4}-[0-9]{2}-[0-9]{2}')
+
+    x_bajada <- noticia |>
+      html_elements("meta[name='description']") |>
+      html_attr("content") |>
+      head(1)
+
+    x_texto <- noticia |>
+      html_elements("p") |>
+      html_text2() |>
       paste(collapse = "\n")
     
     resultado <- tibble("titulo" = x_titulo[1],

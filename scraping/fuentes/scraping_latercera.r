@@ -151,7 +151,7 @@ resultados_latercera <- map_df(enlaces_lt, \(enlace) {
                            # "fecha_original" = x_fecha_0 |> validar_elementos(),
                            # "fecha_textual" = x_fecha_texto |> validar_elementos(),
                            "cuerpo" = x_cuerpo |>  validar_elementos(),
-                           "fuente" = "latercera_pais",
+                           "fuente" = "latercera",
                            "url" = enlace,
                            "fecha_scraping" = lubridate::now())
     
