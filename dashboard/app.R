@@ -3,15 +3,17 @@
 # Variables: PGHOST, PGPORT, PGUSER_NOTICIAS/PGPASSWORD_NOTICIAS/PGDATABASE_NOTICIAS (o PGUSER/...)
 # Lee .env en dashboard/ o en raíz del proyecto (Paginaweb). Datos desde 2018; tabla noticias usa columna fuente (medio).
 
-library(shiny)
-library(plotly)
-library(pool)
-library(DBI)
-library(RPostgres)
-library(ggplot2)
-library(dplyr)
-if (requireNamespace("igraph", quietly = TRUE)) library(igraph)
-if (requireNamespace("httr2", quietly = TRUE)) library(httr2)
+suppressPackageStartupMessages({
+  library(shiny)
+  library(plotly)
+  library(pool)
+  library(DBI)
+  library(RPostgres)
+  library(ggplot2)
+  library(dplyr)
+  if (requireNamespace("igraph", quietly = TRUE)) library(igraph)
+  if (requireNamespace("httr2", quietly = TRUE)) library(httr2)
+})
 
 # ------------------------------------------------------------------------------
 # Cargar .env desde dashboard/ o raíz (Paginaweb) y configurar pool
@@ -159,12 +161,18 @@ ui <- fluidPage(
         letter-spacing: 0.01em;
       }
       .btn-volver-escritorio { display: none; }
+      /* Botón Escritorio anclado a la esquina superior derecha, fuera del flujo
+         del título. El padding-right se reserva SIEMPRE (también en modo iframe):
+         la página wrapper /analisis-noticias-chile superpone su propio botón fijo
+         en esa esquina y el título no debe quedar debajo. */
+      .titulo-row { position: relative; padding-right: 150px; }
       .standalone .btn-volver-escritorio {
-        display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0;
+        display: inline-flex; align-items: center; gap: 6px;
+        position: absolute; top: 0; right: 0;
         background: #0f172a; color: #fff !important; border-radius: 7px;
         padding: 7px 14px; font-size: 1.38rem; font-weight: 600;
         text-decoration: none !important; letter-spacing: 0.03em;
-        white-space: nowrap; transition: background 0.15s; margin-bottom: 4px;
+        white-space: nowrap; transition: background 0.15s;
       }
       .btn-volver-escritorio:hover { background: #0d6efd; color: #fff !important; text-decoration: none !important; }
       /* === LAYOUT === */
@@ -296,6 +304,74 @@ ui <- fluidPage(
         letter-spacing: 0.08em;
         color: #94a3b8;
       }
+      /* === SENTIMENT === */
+      .sent-kpi { position: relative; overflow: hidden; }
+      .sent-kpi::before { content:''; position:absolute; top:0; left:0; right:0; height:4px; background: var(--c, #0d6efd); }
+      .sent-kpi .valor { color: var(--c, #0d6efd); }
+      .sent-kpi.neg { --c:#dc2626; } .sent-kpi.neu { --c:#94a3b8; } .sent-kpi.pos { --c:#16a34a; } .sent-kpi.net { --c:#0d6efd; }
+      .sent-kpi .delta { font-size:1.3rem; font-weight:700; margin-left:7px; letter-spacing:0; }
+      .sent-kpi .delta.up { color:#16a34a; } .sent-kpi .delta.down { color:#dc2626; } .sent-kpi .delta.flat { color:#94a3b8; }
+      .sent-bar { display:flex; height:38px; border-radius:10px; overflow:hidden; border:1px solid #e8edf3; box-shadow: inset 0 1px 2px rgba(15,23,42,0.05); }
+      .sent-bar .seg { display:flex; align-items:center; justify-content:center; color:#fff; font-weight:700; font-size:1.4rem; min-width:0; text-shadow:0 1px 2px rgba(0,0,0,0.12); transition:flex-basis .25s ease; }
+      .sent-bar .seg.neg { background:#dc2626; } .sent-bar .seg.neu { background:#94a3b8; } .sent-bar .seg.pos { background:#16a34a; }
+      .sent-legend { display:flex; gap:18px; margin-top:10px; font-size:1.3rem; color:#64748b; }
+      .sent-legend span { display:inline-flex; align-items:center; gap:6px; }
+      .sent-legend i { width:11px; height:11px; border-radius:3px; display:inline-block; }
+      .sent-chip { display:inline-block; padding:3px 12px; border-radius:20px; font-size:1.28rem; font-weight:600; white-space:nowrap; }
+      .sent-chip.neg { background:#fef2f2; color:#b91c1c; border:1px solid #fecaca; }
+      .sent-chip.neu { background:#f1f5f9; color:#475569; border:1px solid #e2e8f0; }
+      .sent-chip.pos { background:#f0fdf4; color:#15803d; border:1px solid #bbf7d0; }
+      .sent-tabla { width:100%; border-collapse:collapse; }
+      .sent-tabla td { padding:11px 8px; border-bottom:1px solid #f1f5f9; font-size:1.46rem; color:#1e293b; vertical-align:middle; line-height:1.35; }
+      .sent-tabla tr:hover td { background:#f8fafc; }
+      .sent-tabla .meta-celda { white-space:nowrap; }
+      .sent-tabla .fecha { color:#94a3b8; font-size:1.25rem; display:block; }
+      .sent-tabla .medio { color:#64748b; font-size:1.25rem; font-weight:600; display:block; }
+      .sent-tabla .conf { color:#94a3b8; font-size:1.22rem; white-space:nowrap; text-align:right; }
+      .sent-meta { font-size:1.34rem; color:#94a3b8; margin:2px 4px 1.4rem 4px; }
+      .sent-meta b { color:#475569; font-weight:700; }
+      .sent-aviso-rango {
+        display:flex; align-items:baseline; gap:9px;
+        background:#fffbeb; border:1px solid #fde68a; border-radius:10px;
+        padding:10px 16px; margin-bottom:1.4rem;
+        font-size:1.36rem; color:#92400e; line-height:1.45;
+      }
+      .sent-aviso-rango b { font-weight:700; }
+      /* sentimiento: barra interactiva + control de medio */
+      .sent-bar .seg { cursor:pointer; transition:flex-basis .25s ease, opacity .15s ease, filter .15s ease; }
+      .sent-bar .seg:hover { filter:brightness(1.09); }
+      .sent-bar.has-sel .seg { opacity:0.38; }
+      .sent-bar.has-sel .seg.active { opacity:1; box-shadow: inset 0 0 0 3px rgba(255,255,255,0.9); }
+      .sent-filtro-activo { margin-top:11px; font-size:1.34rem; color:#475569; display:flex; align-items:center; gap:9px; flex-wrap:wrap; }
+      .sent-filtro-activo .limpiar { color:#0d6efd; cursor:pointer; font-weight:600; text-decoration:none; border:none; background:none; padding:0; font-size:1.34rem; }
+      .sent-filtro-activo .limpiar:hover { text-decoration:underline; }
+      .sent-control { display:flex; align-items:flex-end; gap:14px; flex-wrap:wrap; margin-bottom:1.4rem; padding:1.1rem 1.4rem; }
+      .sent-control .titulo { flex:1; min-width:200px; }
+      .sent-control .titulo h4 { margin:0 0 2px 0; }
+      .sent-control .selector { min-width:230px; }
+      .sent-control .selector .control-label { font-weight:600; font-size:1.2rem; letter-spacing:0.07em; text-transform:uppercase; color:#64748b; margin-bottom:5px; display:block; }
+      .sent-hint { font-size:1.28rem; color:#94a3b8; margin:3px 0 0 0; }
+      /* sentimiento: fila superior — tono neto (card aparte) + distribución con selector */
+      .sent-toprow { display:flex; flex-wrap:wrap; gap:1.4rem; margin-bottom:1.4rem; align-items:stretch; }
+      .sent-net-card { flex:1 1 280px; display:flex; flex-direction:column; justify-content:center; border-radius:14px; border:1px solid #e8edf3; padding:1.7rem 1.9rem; box-shadow:0 2px 14px rgba(15,23,42,0.07),0 1px 3px rgba(15,23,42,0.04); }
+      .sent-net-card .lbl { font-size:1.22rem; font-weight:700; text-transform:uppercase; letter-spacing:0.11em; opacity:0.72; }
+      .sent-net-card .big { font-size:4.6rem; font-weight:800; line-height:1; letter-spacing:-0.045em; margin:8px 0 7px; }
+      .sent-net-card .desc { font-size:1.5rem; font-weight:600; opacity:0.9; }
+      .sent-net-card .vs { font-size:1.16rem; font-weight:600; text-transform:uppercase; letter-spacing:0.07em; margin-top:11px; opacity:0.6; }
+      .sent-net-card.neg { background:linear-gradient(135deg,#fff5f5,#fcdcdc); color:#b91c1c; border-color:#f7c9c9; }
+      .sent-net-card.pos { background:linear-gradient(135deg,#f2fdf5,#d3f4dd); color:#15803d; border-color:#bfe9cb; }
+      .sent-net-card.neu { background:linear-gradient(135deg,#fbfcfe,#eaeff5); color:#475569; }
+      .sent-distrib-card { flex:2 1 430px; margin-bottom:0; }
+      .sent-card-head { display:flex; justify-content:space-between; align-items:center; gap:16px; flex-wrap:wrap; margin-bottom:16px; }
+      .sent-card-head h4 { margin:0; }
+      .sent-medio { display:flex; align-items:center; gap:11px; }
+      .sent-medio .lbl { font-size:1.16rem; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; color:#94a3b8; white-space:nowrap; }
+      .sent-medio .form-group { margin:0; }
+      .sent-medio .selectize-control { margin:0; min-width:200px; }
+      .sent-medio .selectize-input { border-radius:9px; border:1.5px solid #e2e8f0; padding:9px 14px; font-size:1.4rem; font-weight:600; color:#0f172a; box-shadow:none; }
+      .sent-medio .selectize-input.focus { border-color:#0d6efd; box-shadow:0 0 0 3px rgba(13,110,253,0.12); }
+      .sent-legend.vals span { font-weight:600; color:#475569; font-size:1.32rem; }
+      .sent-paginacion .btn-sm { font-size:1.28rem; border-radius:8px; }
       /* === HR SEPARATORS === */
       hr { border: none; border-top: 1px solid #e2e8f0; margin: 1.25rem 0; }
       /* === FORMS & INPUTS === */
@@ -848,7 +924,10 @@ ui <- fluidPage(
               "Volumen de datos",
               div(class = "chart-card",
                 h4("Volumen de noticias por medio"),
-                tags$p(class = "small-metric", "Top de medios ordenados por volumen total de noticias publicadas en el período seleccionado."),
+                tags$p(class = "small-metric", HTML(paste0(
+                  "Top de medios ordenados por volumen total de noticias publicadas en el período seleccionado. ",
+                  "<span style='color:#f59e0b; font-weight:700;'>&#9632; Amarillo</span>: medio con períodos sin datos (gaps) · ",
+                  "<span style='color:#dc2626; font-weight:700;'>&#9632; Rojo</span>: medio con problemas de captura — pasa el cursor sobre la barra para ver el detalle."))),
                 plotlyOutput("grafico_por_medio", height = "700px")
               ),
               div(class = "chart-card",
@@ -872,6 +951,35 @@ ui <- fluidPage(
               )
             ),
           )
+        ),
+        tabPanel(
+          "Sentimiento",
+          # Aviso cuando el rango elegido excede la cobertura del análisis de sentimiento
+          uiOutput("sent_aviso_rango"),
+          # FILA SUPERIOR — tono neto (card aparte, acento) + distribución con selector de medio
+          div(class = "sent-toprow",
+            uiOutput("sent_hero_net"),
+            div(class = "chart-card sent-distrib-card",
+              div(class = "sent-card-head",
+                h4("Distribución del tono"),
+                div(class = "sent-medio busqueda-noticias",
+                  tags$span(class = "lbl", "Medio"),
+                  selectInput("sent_filtro_medio", label = NULL,
+                    choices = c("Todos los medios" = "todos"), selected = "todos", width = "220px"))
+              ),
+              uiOutput("sent_barra_periodo")
+            )
+          ),
+          # Evolución en el tiempo, y debajo el ranking de medios (cuando es "Todos")
+          uiOutput("sent_bento"),
+          # TABLA paginada (10 por página)
+          div(class = "chart-card",
+            h4("Titulares clasificados"),
+            tags$p(class = "small-metric", "Titulares con su tono y confianza. El filtro de tono se controla con un clic en la barra de distribución de arriba."),
+            uiOutput("tabla_sent_titulares"),
+            div(class = "sent-paginacion", uiOutput("sent_paginacion"))
+          ),
+          uiOutput("sent_meta")
         ),
         tabPanel(
           "Más información",
@@ -928,14 +1036,35 @@ server <- function(input, output, session) {
   STOPWORDS_GRAFICOS <- STOPWORDS
 
   # Presets de fechas
+  aplicar_preset_fechas <- function(n_dias) {
+    limite_fin <- Sys.Date()
+    rango_actual <- isolate(input$fechas)
+    if (length(rango_actual) >= 2) {
+      fin_actual <- suppressWarnings(as.Date(rango_actual[2]))
+      if (!is.na(fin_actual)) limite_fin <- fin_actual
+    }
+    fecha_fin <- limite_fin
+    fecha_inicio <- max(as.Date("2018-01-01"), fecha_fin - (n_dias - 1))
+    updateDateRangeInput(
+      session, "fechas",
+      start = fecha_inicio,
+      end = fecha_fin,
+      min = as.Date("2018-01-01"),
+      max = limite_fin
+    )
+    # Fallback explícito para forzar ambos campos en el cliente.
+    session$sendInputMessage("fechas", list(
+      value = c(as.character(fecha_inicio), as.character(fecha_fin))
+    ))
+  }
   observeEvent(input$preset_7, {
-    updateDateRangeInput(session, "fechas", start = Sys.Date() - 6, end = Sys.Date())
+    aplicar_preset_fechas(7)
   })
   observeEvent(input$preset_30, {
-    updateDateRangeInput(session, "fechas", start = Sys.Date() - 29, end = Sys.Date())
+    aplicar_preset_fechas(30)
   })
   observeEvent(input$preset_365, {
-    updateDateRangeInput(session, "fechas", start = Sys.Date() - 364, end = Sys.Date())
+    aplicar_preset_fechas(365)
   })
 
   palabras_excluidas_custom <- reactiveVal(character(0))
@@ -1122,30 +1251,12 @@ server <- function(input, output, session) {
     if (is.null(terms) || length(terms) == 0L)
       return(data.frame(fecha = as.Date(character()), termino = character(), frecuencia = integer()))
 
-    if (store_disponible()) {
-      # Búsqueda semántica por cada término seleccionado (una línea por concepto)
-      lineas <- lapply(terms, function(term) {
-        tryCatch({
-          ids_sem <- ragnar::ragnar_retrieve_vss(rag_store, query = term, top_k = 5000L)
-          ids_sem <- enriquecer_vss(ids_sem)
-          if (is.null(ids_sem) || nrow(ids_sem) == 0L || is.null(ids_sem$fecha)) return(NULL)
-          ids_sem <- ids_sem[!is.na(ids_sem$fecha) & ids_sem$fecha >= f$start & ids_sem$fecha <= f$end, ]
-          if (nrow(ids_sem) == 0L) return(NULL)
-          d <- ids_sem %>%
-            dplyr::mutate(fecha = as.Date(fecha)) %>%
-            dplyr::group_by(fecha) %>%
-            dplyr::summarise(frecuencia = dplyr::n(), .groups = "drop") %>%
-            dplyr::mutate(termino = term) %>%
-            dplyr::arrange(fecha)
-          d$frecuencia <- as.integer(d$frecuencia)
-          d
-        }, error = function(e) NULL)
-      })
-      combinado <- do.call(rbind, Filter(Negate(is.null), lineas))
-      if (!is.null(combinado) && nrow(combinado) > 0L) return(combinado)
-      # Sin resultados semánticos en el rango → fallback a SQL
-    }
-
+    # Frecuencia literal de cada término por día (una línea por concepto).
+    # Nota: NO se usa búsqueda semántica aquí. Con top_k alto, ragnar_retrieve_vss
+    # devolvía casi todos los documentos para cualquier término, por lo que todas
+    # las líneas quedaban idénticas (superpuestas) y el gráfico mostraba "un solo
+    # concepto". La tabla precalculada de frecuencias da una serie distinta por
+    # palabra, que es exactamente "cómo evolucionó su presencia en los titulares".
     ph <- paste(sprintf("$%d", seq(3L, length.out = length(terms))), collapse = ", ")
     q <- paste0("
       SELECT fecha, ", cfg$col_t, " AS termino, ", cfg$col_f, " AS frecuencia
@@ -1355,7 +1466,7 @@ server <- function(input, output, session) {
   output$grafico_evolucion_volumen_por_medio <- renderPlotly({
     d <- volumen_por_medio_tiempo()
     if (nrow(d) == 0) {
-      return(plot_ly() %>%
+      return(plot_ly(type = "scatter", mode = "markers") %>%
         add_annotations(text = "No hay datos para el rango elegido.",
           x = 0.5, y = 0.5, xref = "paper", yref = "paper", showarrow = FALSE,
           font = list(size = 14)) %>%
@@ -1365,7 +1476,7 @@ server <- function(input, output, session) {
     sel_medios <- input$medios_evol_volumen_sel
     if (!is.null(sel_medios) && length(sel_medios) > 0) d <- d[d$medio %in% sel_medios, ]
     if (nrow(d) == 0) {
-      return(plot_ly() %>%
+      return(plot_ly(type = "scatter", mode = "markers") %>%
         add_annotations(text = "Selecciona al menos un medio arriba.",
           x = 0.5, y = 0.5, xref = "paper", yref = "paper", showarrow = FALSE,
           font = list(size = 13, color = "#6c757d")) %>%
@@ -1561,7 +1672,7 @@ server <- function(input, output, session) {
         )
         r$n <- as.integer(as.numeric(r$n))
       }
-      r$termino <- terms[i]
+      r$termino <- rep(terms[i], nrow(r))
       grid <- expand.grid(medio = medios, termino = terms[i], stringsAsFactors = FALSE)
       r <- left_join(grid, r, by = c("medio", "termino")) %>% mutate(n = coalesce(n, 0L))
       out_list[[i]] <- r
@@ -1973,7 +2084,7 @@ server <- function(input, output, session) {
   output$grafico_top_terminos <- renderPlotly({
     top <- top_30_df()
     if (nrow(top) == 0) {
-      return(plot_ly() %>%
+      return(plot_ly(type = "scatter", mode = "markers") %>%
         add_annotations(
           text = "No hay datos para el rango elegido.",
           x = 0.5, y = 0.5, xref = "paper", yref = "paper", showarrow = FALSE, font = list(size = 14)
@@ -2498,6 +2609,61 @@ server <- function(input, output, session) {
   })
   outputOptions(output, "grafico_conceptos_por_medio", suspendWhenHidden = FALSE)
 
+  # ---- Diagnóstico de captura por medio (para colorear el gráfico de volumen) ----
+  # Problemas conocidos que no se pueden inferir de los datos (curado a mano).
+  PROBLEMAS_MEDIOS_FIJOS <- c(
+    izquierdadiario = "Scraper roto: el sitio bloquea la captura automática (error 403).",
+    redgol = "Fuente descontinuada: el sitio cambió su estructura y el scraper fue retirado. Cobertura hasta noviembre 2024."
+  )
+  DIAG_UMBRAL_GAP_DIAS <- 30L
+
+  diagnostico_medios <- reactive({
+    f <- fechas()
+    start <- max(f$start, FECHA_DESDE_DASHBOARD)
+    q <- "
+      WITH fechas_medio AS (
+        SELECT DISTINCT fuente, fecha FROM noticias WHERE fecha BETWEEN $1 AND $2
+      ), gaps AS (
+        SELECT fuente, fecha, LAG(fecha) OVER (PARTITION BY fuente ORDER BY fecha) AS prev
+        FROM fechas_medio
+      ), max_gaps AS (
+        SELECT DISTINCT ON (fuente) fuente,
+               (fecha - prev - 1)::int AS gap_dias,
+               (prev + 1)::text  AS gap_desde,
+               (fecha - 1)::text AS gap_hasta
+        FROM gaps WHERE prev IS NOT NULL
+        ORDER BY fuente, (fecha - prev) DESC
+      ), ultimos AS (
+        SELECT fuente, MAX(fecha) AS ultima FROM fechas_medio GROUP BY fuente
+      )
+      SELECT u.fuente, COALESCE(m.gap_dias, 0) AS gap_dias,
+             m.gap_desde, m.gap_hasta, u.ultima::text AS ultima
+      FROM ultimos u LEFT JOIN max_gaps m USING (fuente)
+    "
+    d <- tryCatch(dbGetQuery(pool, q, params = list(start, f$end)),
+                  error = function(e) data.frame())
+    if (nrow(d) == 0) return(d)
+    d$dias_inactivo <- as.integer(f$end - as.Date(d$ultima))
+    d$estado <- "ok"
+    d$problema <- ""
+    con_gap <- d$gap_dias >= DIAG_UMBRAL_GAP_DIAS
+    d$estado[con_gap] <- "gap"
+    d$problema[con_gap] <- sprintf(
+      "⚠ Gap de datos: sin noticias del %s al %s (%d días).",
+      format(as.Date(d$gap_desde[con_gap]), "%d-%m-%Y"),
+      format(as.Date(d$gap_hasta[con_gap]), "%d-%m-%Y"),
+      d$gap_dias[con_gap])
+    inactivo <- d$dias_inactivo >= DIAG_UMBRAL_GAP_DIAS
+    d$estado[inactivo] <- "malo"
+    d$problema[inactivo] <- sprintf(
+      "⛔ Inactivo: sin noticias desde el %s.",
+      format(as.Date(d$ultima[inactivo]), "%d-%m-%Y"))
+    fijo <- d$fuente %in% names(PROBLEMAS_MEDIOS_FIJOS)
+    d$estado[fijo] <- "malo"
+    d$problema[fijo] <- paste0("⛔ ", PROBLEMAS_MEDIOS_FIJOS[d$fuente[fijo]])
+    d
+  })
+
   # Gráfico: distribución por medio (pestaña Medios)
   output$grafico_por_medio <- renderPlotly({
     d <- noticias_por_medio()
@@ -2513,15 +2679,28 @@ server <- function(input, output, session) {
         ) %>% config(displayModeBar = FALSE))
     }
     d <- d[order(d$total), ]
+    diag <- diagnostico_medios()
+    d$estado <- "ok"
+    d$problema <- ""
+    if (nrow(diag) > 0) {
+      idx <- match(d$medio, diag$fuente)
+      hay <- !is.na(idx)
+      d$estado[hay] <- diag$estado[idx[hay]]
+      d$problema[hay] <- diag$problema[idx[hay]]
+    }
+    colores <- colorRampPalette(c("#6c9bd1", "#0d6efd"))(nrow(d))
+    colores[d$estado == "gap"]  <- "#f59e0b"
+    colores[d$estado == "malo"] <- "#dc2626"
     plot_ly(
       x = d$total,
       y = factor(d$medio, levels = d$medio),
+      customdata = ifelse(nzchar(d$problema), paste0("<br>", d$problema), ""),
       type = "bar", orientation = "h",
       marker = list(
-        color = colorRampPalette(c("#6c9bd1", "#0d6efd"))(nrow(d)),
+        color = colores,
         line = list(color = "rgba(255,255,255,0)", width = 0)
       ),
-      hovertemplate = "<b>%{y}</b><br>Noticias: %{x:,.0f}<extra></extra>"
+      hovertemplate = "<b>%{y}</b><br>Noticias: %{x:,.0f}%{customdata}<extra></extra>"
     ) %>%
     layout(
       xaxis = list(title = "Número de noticias", zeroline = FALSE, showgrid = TRUE, gridcolor = "#eee"),
@@ -2613,7 +2792,7 @@ server <- function(input, output, session) {
   output$red_coocurrencia_plotly <- renderPlotly({
     datos <- coocurrencia_red()
     if (nrow(datos) == 0L) {
-      return(plot_ly() %>%
+      return(plot_ly(type = "scatter", mode = "markers") %>%
         add_annotations(
           text = "Sin datos para este período o umbral seleccionado.",
           x = 0.5, y = 0.5, xref = "paper", yref = "paper", showarrow = FALSE,
@@ -2623,7 +2802,7 @@ server <- function(input, output, session) {
         config(displayModeBar = FALSE))
     }
     if (!requireNamespace("igraph", quietly = TRUE)) {
-      return(plot_ly() %>%
+      return(plot_ly(type = "scatter", mode = "markers") %>%
         add_annotations(
           text = "Instalar igraph: install.packages('igraph')",
           x = 0.5, y = 0.5, xref = "paper", yref = "paper", showarrow = FALSE,
@@ -2746,7 +2925,7 @@ server <- function(input, output, session) {
   # Reactivo: sentimiento por fuente
   sentimiento_por_fuente <- reactive({
     f <- fechas()
-    start <- max(f$start, FECHA_DESDE_DASHBOARD)
+    start <- sent_inicio(f$start)
     q <- "
       SELECT n.fuente AS medio, ns.sentimiento, COUNT(*) AS n
       FROM noticias n
@@ -2765,41 +2944,375 @@ server <- function(input, output, session) {
     )
   })
 
+  # ---- Sentimiento: helpers y paleta ----
+  COL_SENT <- c(positivo = "#16a34a", neutral = "#94a3b8", negativo = "#dc2626")
+  NOMBRES_MEDIOS <- c(
+    "24horas"="24 Horas","adnradio"="ADN Radio","agricultura"="Agricultura","biobio"="Radio BíoBío",
+    "chvnoticias"="CHV Noticias","ciper"="Ciper","cnnchile"="CNN Chile","cooperativa"="Cooperativa",
+    "diariofinanciero"="D. Financiero","elciudadano"="El Ciudadano","eldinamo"="El Dínamo",
+    "elmostrador"="El Mostrador","elsiglo"="El Siglo","emol"="Emol","exante"="Ex-Ante",
+    "lacuarta"="La Cuarta","lahora"="La Hora","lanacion"="La Nación","latercera"="La Tercera",
+    "meganoticias"="Meganoticias","publimetro"="Publimetro","radiouchile"="Radio U. de Ch.",
+    "t13"="T13","theclinic"="The Clinic","redgol"="RedGol","lasegunda"="La Segunda",
+    "eldesconcierto"="El Desconcierto","quintopoder"="El Quinto Poder","izquierdadiario"="La Izquierda Diario")
+  nombres_medios <- function(x) { y <- NOMBRES_MEDIOS[x]; y[is.na(y)] <- x[is.na(y)]; unname(y) }
+  sent_sin_datos <- function(msg = "Sin datos de sentimiento para este período todavía.") {
+    plot_ly(type = "scatter", mode = "markers") %>%
+      add_annotations(text = msg, x = 0.5, y = 0.5, xref = "paper", yref = "paper",
+                      showarrow = FALSE, font = list(size = 15, color = "#94a3b8", family = "Inter, sans-serif")) %>%
+      layout(xaxis = list(showticklabels = FALSE, showgrid = FALSE, zeroline = FALSE),
+             yaxis = list(showticklabels = FALSE, showgrid = FALSE, zeroline = FALSE)) %>%
+      config(displayModeBar = FALSE)
+  }
+
+  # ---- Estado de filtros del tab de sentimiento ----
+  medio_sel <- reactive({ m <- input$sent_filtro_medio; if (is.null(m) || !nzchar(m)) "todos" else m })
+  tono_sel  <- reactiveVal("todos")
+  # clic en la barra: alterna el tono (clic en el activo, o "× limpiar", vuelve a todos)
+  observeEvent(input$sent_bar_click, {
+    clic <- input$sent_bar_click
+    if (is.null(clic)) return()
+    if (identical(clic, "__clear__")) { tono_sel("todos"); return() }
+    tono_sel(if (identical(tono_sel(), clic)) "todos" else clic)
+  })
+  # al cambiar de medio, resetear el filtro de tono
+  observeEvent(medio_sel(), { tono_sel("todos") }, ignoreInit = TRUE)
+  # subtítulo dinámico
+  output$sent_subtitulo <- renderUI({
+    m <- medio_sel()
+    tags$p(class = "sent-hint", if (m == "todos")
+      "Mostrando todos los medios — elige uno para ver su detalle"
+      else paste0("Mostrando: ", nombres_medios(m)))
+  })
+
+  # ---- Cobertura real del análisis de sentimiento ----
+  # No sirve el MIN/MAX global: existe una isla dic-2022/ene-2023 clasificada con
+  # un modelo antiguo de menor calidad (qwen2.5:3b) y luego nada hasta 2026.
+  # La cobertura vigente es el bloque contiguo MÁS RECIENTE de meses con
+  # clasificación real; el tab se limita a ese bloque para ser coherente.
+  sent_cobertura_fechas <- reactive({
+    r <- tryCatch(dbGetQuery(pool, "
+      SELECT date_trunc('month', n.fecha)::date::text AS mes,
+             COUNT(*)::int AS clasif,
+             MIN(n.fecha)::text AS desde_mes,
+             MAX(n.fecha)::text AS hasta_mes
+      FROM noticias n JOIN noticias_sentimiento ns ON ns.id = n.id
+      GROUP BY 1 ORDER BY 1 DESC"),
+      error = function(e) NULL)
+    if (is.null(r) || nrow(r) == 0L) return(NULL)
+    r <- r[r$clasif >= 200L, , drop = FALSE]  # meses con clasificación real, no residuos
+    if (nrow(r) == 0L) return(NULL)
+    meses <- as.Date(r$mes)
+    fin <- 1L
+    while (fin < nrow(r) && seq(meses[fin], by = "-1 month", length.out = 2L)[2L] == meses[fin + 1L])
+      fin <- fin + 1L
+    list(desde = as.Date(min(r$desde_mes[seq_len(fin)])),
+         hasta = as.Date(max(r$hasta_mes[seq_len(fin)])))
+  })
+
+  # Inicio efectivo de las consultas del tab: nunca antes de la cobertura vigente
+  sent_inicio <- function(f_start) {
+    cob <- sent_cobertura_fechas()
+    s <- max(f_start, FECHA_DESDE_DASHBOARD)
+    if (!is.null(cob)) s <- max(s, cob$desde)
+    s
+  }
+
+  # Aviso cuando el rango elegido va más allá de lo clasificado (p. ej. desde 2018):
+  # sin esto, el usuario asume que el sentimiento cubre todo el rango de fechas.
+  output$sent_aviso_rango <- renderUI({
+    cob <- sent_cobertura_fechas()
+    if (is.null(cob)) return(NULL)
+    f <- fechas()
+    start <- max(f$start, FECHA_DESDE_DASHBOARD)
+    if (start >= cob$desde && f$end <= cob$hasta) return(NULL)
+    div(class = "sent-aviso-rango",
+      tags$span("⚠"),
+      tags$span(HTML(sprintf(
+        "El análisis de sentimiento cubre titulares desde el <b>%s</b> hasta el <b>%s</b>. Lo que ves abajo corresponde solo a ese período; el resto del rango elegido no tiene titulares clasificados.",
+        format(cob$desde, "%d-%m-%Y"), format(cob$hasta, "%d-%m-%Y")))))
+  })
+
+  # ---- Reactivo: distribución del período (+ período anterior para tendencia) ----
+  sent_counts_rango <- function(start, end, medio = "todos") {
+    cond <- ""; params <- list(start, end)
+    if (medio != "todos") { params <- c(params, list(medio)); cond <- " AND n.fuente = $3" }
+    r <- tryCatch(dbGetQuery(pool, paste0("
+      SELECT ns.sentimiento, COUNT(*)::int n
+      FROM noticias n JOIN noticias_sentimiento ns ON ns.id = n.id
+      WHERE n.fecha >= $1 AND n.fecha <= $2", cond, " GROUP BY ns.sentimiento"),
+      params = params), error = function(e) NULL)
+    v <- c(positivo = 0L, neutral = 0L, negativo = 0L)
+    if (!is.null(r) && nrow(r) > 0L) v[r$sentimiento] <- as.integer(r$n)
+    v
+  }
+  sentimiento_periodo <- reactive({
+    f <- fechas(); start <- sent_inicio(f$start); end <- f$end; m <- medio_sel()
+    len <- as.integer(end - start) + 1L
+    cur <- sent_counts_rango(start, end, m)
+    prev <- sent_counts_rango(start - len, start - 1L, m)
+    tot <- sum(cur); totp <- sum(prev)
+    list(
+      cur = cur, tot = tot,
+      pct = if (tot > 0) round(100 * cur / tot) else c(positivo = 0, neutral = 0, negativo = 0),
+      net = if (tot > 0) (cur["positivo"] - cur["negativo"]) / tot * 100 else 0,
+      net_prev = if (totp > 0) (prev["positivo"] - prev["negativo"]) / totp * 100 else NA_real_
+    )
+  })
+
+  # ---- Card de tono neto (acento de color según el ánimo dominante) ----
+  output$sent_hero_net <- renderUI({
+    s <- sentimiento_periodo()
+    if (s$tot == 0L) return(div(class = "sent-net-card neu",
+      div(class = "lbl", "Tono neto del período"), div(class = "big", "—"),
+      div(class = "desc", "Sin titulares clasificados aún")))
+    net <- round(s$net)
+    cls  <- if (net <= -8) "neg" else if (net >= 8) "pos" else "neu"
+    desc <- if (net <= -8) "Predomina el tono negativo"
+            else if (net >= 8) "Predomina el tono positivo"
+            else "Tono mayormente equilibrado"
+    delta <- if (is.na(s$net_prev)) NA_real_ else net - round(s$net_prev)
+    vs <- if (is.na(delta)) NULL else div(class = "vs",
+      sprintf("%s %d vs. período anterior", if (delta > 0) "▲" else if (delta < 0) "▼" else "→", abs(delta)))
+    div(class = paste("sent-net-card", cls),
+      div(class = "lbl", "Tono neto del período"),
+      div(class = "big", sprintf("%+d", net)),
+      div(class = "desc", desc),
+      vs)
+  })
+
+  # ---- Barra 100% interactiva (clic = filtro de tono de la tabla) ----
+  output$sent_barra_periodo <- renderUI({
+    s <- sentimiento_periodo()
+    if (s$tot == 0L) return(div(class = "small-metric", "Sin datos en el período."))
+    fr <- s$cur / s$tot * 100
+    activo <- tono_sel()
+    seg <- function(tono, cls, val) {
+      if (val <= 0) return(NULL)
+      div(class = trimws(paste("seg", cls, if (identical(activo, tono)) "active" else "")),
+          onclick = sprintf("Shiny.setInputValue('sent_bar_click','%s',{priority:'event'})", tono),
+          style = sprintf("flex-basis:%.4f%%;", val),
+          if (val >= 8) paste0(round(val), "%") else "")
+    }
+    chip_cls <- c(negativo = "neg", neutral = "neu", positivo = "pos")
+    chip_lab <- c(negativo = "Negativos", neutral = "Neutrales", positivo = "Positivos")
+    filtro_info <- if (activo != "todos")
+      div(class = "sent-filtro-activo",
+        tags$span("Tabla filtrada a "),
+        tags$span(class = paste("sent-chip", chip_cls[[activo]]), chip_lab[[activo]]),
+        tags$button(class = "limpiar", type = "button",
+          onclick = "Shiny.setInputValue('sent_bar_click','__clear__',{priority:'event'})", "× limpiar"))
+    else
+      div(class = "sent-filtro-activo",
+        tags$span(style = "color:#94a3b8;", "Haz clic en un color para filtrar ese tono en la tabla de abajo."))
+    tagList(
+      div(class = trimws(paste("sent-bar", if (activo != "todos") "has-sel" else "")),
+        seg("negativo", "neg", fr["negativo"]),
+        seg("neutral",  "neu", fr["neutral"]),
+        seg("positivo", "pos", fr["positivo"])),
+      div(class = "sent-legend vals",
+        span(tags$i(style = "background:#dc2626"), paste0("Negativo ", round(fr["negativo"]), "%")),
+        span(tags$i(style = "background:#94a3b8"), paste0("Neutral ", round(fr["neutral"]), "%")),
+        span(tags$i(style = "background:#16a34a"), paste0("Positivo ", round(fr["positivo"]), "%"))),
+      filtro_info
+    )
+  })
+
+  # ---- Evolución del tono (área 100% + línea de tono neto) ----
+  sentimiento_evolucion <- reactive({
+    f <- fechas(); start <- sent_inicio(f$start); end <- f$end; m <- medio_sel()
+    cond <- ""; params <- list(start, end)
+    if (m != "todos") { params <- c(params, list(m)); cond <- " AND n.fuente = $3" }
+    tryCatch(dbGetQuery(pool, paste0("
+      SELECT date_trunc('month', n.fecha)::date AS mes, ns.sentimiento, COUNT(*)::int n
+      FROM noticias n JOIN noticias_sentimiento ns ON ns.id = n.id
+      WHERE n.fecha >= $1 AND n.fecha <= $2", cond, " GROUP BY 1, 2 ORDER BY 1"),
+      params = params), error = function(e) data.frame())
+  })
+  output$grafico_sent_evolucion <- renderPlotly({
+    d <- sentimiento_evolucion()
+    if (is.null(d) || nrow(d) == 0L) return(sent_sin_datos())
+    meses <- sort(unique(d$mes))
+    w <- function(s) { v <- setNames(rep(0L, length(meses)), as.character(meses));
+      sub <- d[d$sentimiento == s, ]; v[as.character(sub$mes)] <- as.integer(sub$n); as.integer(v) }
+    neg <- w("negativo"); neu <- w("neutral"); pos <- w("positivo")
+    tot <- neg + neu + pos; tot[tot == 0] <- 1L
+    net <- round((pos - neg) / tot * 100)
+    mesD <- as.Date(meses)
+    plot_ly() %>%
+      add_trace(x = mesD, y = neg, name = "Negativo", type = "scatter", mode = "none",
+                stackgroup = "one", groupnorm = "percent", fillcolor = COL_SENT["negativo"],
+                hovertemplate = "%{y:.0f}%<extra>Negativo</extra>") %>%
+      add_trace(x = mesD, y = neu, name = "Neutral", type = "scatter", mode = "none",
+                stackgroup = "one", fillcolor = COL_SENT["neutral"],
+                hovertemplate = "%{y:.0f}%<extra>Neutral</extra>") %>%
+      add_trace(x = mesD, y = pos, name = "Positivo", type = "scatter", mode = "none",
+                stackgroup = "one", fillcolor = COL_SENT["positivo"],
+                hovertemplate = "%{y:.0f}%<extra>Positivo</extra>") %>%
+      add_trace(x = mesD, y = net, name = "Tono neto", type = "scatter", mode = "lines+markers",
+                yaxis = "y2", line = list(color = "#0f172a", width = 2),
+                marker = list(size = 4, color = "#0f172a"),
+                hovertemplate = "Tono neto: %{y}<extra></extra>") %>%
+      layout(font = list(family = "Inter, sans-serif"),
+        xaxis = list(title = "", showgrid = FALSE),
+        yaxis = list(title = "Composición", ticksuffix = "%", range = c(0, 100), showgrid = FALSE),
+        yaxis2 = list(title = "Tono neto", overlaying = "y", side = "right", range = c(-100, 100),
+                      zeroline = TRUE, zerolinecolor = "#cbd5e1", showgrid = FALSE),
+        legend = list(orientation = "h", x = 0, y = 1.13, font = list(size = 11)),
+        hovermode = "x unified", margin = list(t = 34, b = 28, l = 52, r = 56)) %>%
+      config(displayModeBar = FALSE, locale = "es")
+  })
+
+  # ---- Por medio (100% apilado horizontal, ordenado por tono neto) ----
   output$grafico_sentimiento_por_fuente <- renderPlotly({
     d <- sentimiento_por_fuente()
-    if (nrow(d) == 0L) {
-      return(plot_ly() %>%
-        add_annotations(
-          text = "Sin datos de sentimiento. Ejecutar run_sentimiento.R primero.",
-          x = 0.5, y = 0.5, xref = "paper", yref = "paper", showarrow = FALSE,
-          font = list(size = 14)
-        ) %>%
-        layout(xaxis = list(showticklabels = FALSE), yaxis = list(showticklabels = FALSE)) %>%
-        config(displayModeBar = FALSE))
+    if (nrow(d) == 0L) return(sent_sin_datos())
+    medios <- unique(d$medio)
+    mat <- function(s) { v <- setNames(rep(0L, length(medios)), medios);
+      sub <- d[d$sentimiento == s, ]; v[sub$medio] <- as.integer(sub$n); v }
+    neg <- mat("negativo"); neu <- mat("neutral"); pos <- mat("positivo")
+    tot <- neg + neu + pos
+    keep <- tot >= 10L                      # ocultar medios con muy pocos clasificados (ruido)
+    if (!any(keep)) keep <- rep(TRUE, length(tot))
+    medios <- medios[keep]; neg <- neg[keep]; neu <- neu[keep]; pos <- pos[keep]; tot <- tot[keep]
+    totp <- ifelse(tot == 0, 1, tot)
+    pneg <- neg / totp * 100; pneu <- neu / totp * 100; ppos <- pos / totp * 100
+    ord <- order(ppos - pneg)               # ascendente → más positivo arriba (barras h se apilan de abajo)
+    nm <- nombres_medios(medios[ord]); yf <- factor(nm, levels = nm)
+    plot_ly() %>%
+      add_trace(y = yf, x = pneg[ord], name = "Negativo", type = "bar", orientation = "h",
+                marker = list(color = COL_SENT["negativo"]), customdata = neg[ord],
+                hovertemplate = "%{x:.0f}%  (%{customdata})<extra>Negativo</extra>") %>%
+      add_trace(y = yf, x = pneu[ord], name = "Neutral", type = "bar", orientation = "h",
+                marker = list(color = COL_SENT["neutral"]), customdata = neu[ord],
+                hovertemplate = "%{x:.0f}%  (%{customdata})<extra>Neutral</extra>") %>%
+      add_trace(y = yf, x = ppos[ord], name = "Positivo", type = "bar", orientation = "h",
+                marker = list(color = COL_SENT["positivo"]), customdata = pos[ord],
+                hovertemplate = "%{x:.0f}%  (%{customdata})<extra>Positivo</extra>") %>%
+      layout(barmode = "stack", font = list(family = "Inter, sans-serif"),
+        xaxis = list(title = "", ticksuffix = "%", range = c(0, 100), showgrid = FALSE),
+        yaxis = list(title = "", automargin = TRUE),
+        legend = list(orientation = "h", x = 0, y = 1.04, font = list(size = 11)),
+        margin = list(t = 26, b = 20, l = 10, r = 12)) %>%
+      config(displayModeBar = FALSE, locale = "es")
+  })
+
+  # ---- Evolución en el tiempo, y debajo el ranking de medios (cuando es "Todos") ----
+  output$sent_bento <- renderUI({
+    evo <- div(class = "chart-card",
+      h4("¿Cómo cambió el tono en el tiempo?"),
+      tags$p(class = "small-metric", "Composición mensual del tono (100% apilado) y línea de tono neto: porcentaje de positivos menos negativos."),
+      plotlyOutput("grafico_sent_evolucion", height = "400px"))
+    if (medio_sel() == "todos") {
+      tagList(evo,
+        div(class = "chart-card",
+          h4("¿Qué medios son más positivos o negativos?"),
+          tags$p(class = "small-metric", "Contraste del tono entre todos los medios, de más positivo (arriba) a más negativo (abajo). Elige un medio arriba para ver su detalle."),
+          plotlyOutput("grafico_sentimiento_por_fuente", height = "640px")))
+    } else {
+      evo
     }
-    colores_sentimiento <- c("positivo" = "#2ecc71", "neutral" = "#95a5a6", "negativo" = "#e74c3c")
-    sentimientos <- unique(d$sentimiento)
-    p <- plot_ly()
-    for (sent in sentimientos) {
-      sub <- d[d$sentimiento == sent, ]
-      p <- p %>% add_trace(
-        data = sub, x = ~medio, y = ~n,
-        type = "bar", name = sent,
-        marker = list(color = unname(colores_sentimiento[sent])),
-        hovertemplate = paste0("%{x}<br>", sent, ": %{y:.0f}<extra></extra>")
-      )
+  })
+
+  # ---- Poblar selector de medios (los que tienen sentimiento) ----
+  observe({
+    meds <- tryCatch(dbGetQuery(pool,
+      "SELECT DISTINCT n.fuente AS f FROM noticias n JOIN noticias_sentimiento ns ON ns.id = n.id ORDER BY 1")$f,
+      error = function(e) character(0))
+    if (length(meds) == 0L) return()
+    ch <- setNames(meds, nombres_medios(meds))
+    ch <- ch[order(names(ch))]
+    sel <- isolate(input$sent_filtro_medio); if (is.null(sel)) sel <- "todos"
+    updateSelectInput(session, "sent_filtro_medio",
+      choices = c("Todos los medios" = "todos", ch), selected = sel)
+  })
+
+  # ---- Tabla de titulares: filtros compartidos + paginación (10 por página) ----
+  sent_pagina <- reactiveVal(1L)
+  sent_filtros_sql <- reactive({
+    f <- fechas(); start <- sent_inicio(f$start); end <- f$end
+    filtro <- tono_sel(); medio <- medio_sel()
+    conds  <- "WHERE n.fecha >= $1 AND n.fecha <= $2"
+    params <- list(start, end)
+    if (filtro %in% c("negativo", "neutral", "positivo")) {
+      params <- c(params, list(filtro)); conds <- paste0(conds, sprintf(" AND ns.sentimiento = $%d", length(params)))
     }
-    p <- p %>% layout(
-      barmode = "stack",
-      xaxis = list(title = "Medio", tickangle = -45),
-      yaxis = list(title = "Número de artículos", zeroline = FALSE),
-      legend = list(orientation = "v", x = 0.99, xanchor = "right", y = 0.99, yanchor = "top",
-                    bgcolor = "rgba(255,255,255,0.85)", bordercolor = "#ccc", borderwidth = 1,
-                    title = list(text = "Sentimiento"), font = list(size = 10, family = "Arial, sans-serif"),
-                    tracegroupgap = 0),
-      margin = list(b = 60, t = 30, l = 60, r = 30)
+    if (nzchar(medio) && medio != "todos") {
+      params <- c(params, list(medio)); conds <- paste0(conds, sprintf(" AND n.fuente = $%d", length(params)))
+    }
+    list(conds = conds, params = params)
+  })
+  observeEvent(list(tono_sel(), medio_sel(), fechas()), { sent_pagina(1L) }, ignoreInit = TRUE)
+  sent_titulares_total <- reactive({
+    fp <- sent_filtros_sql()
+    tryCatch(dbGetQuery(pool, paste0(
+      "SELECT COUNT(*)::int n FROM noticias n JOIN noticias_sentimiento ns ON ns.id = n.id ", fp$conds),
+      params = fp$params)$n, error = function(e) 0L)
+  })
+  sentimiento_titulares <- reactive({
+    fp <- sent_filtros_sql(); off <- (sent_pagina() - 1L) * 10L
+    tryCatch(dbGetQuery(pool, paste0(
+      "SELECT n.fecha, n.fuente, n.titulo, ns.sentimiento, ns.confianza
+       FROM noticias n JOIN noticias_sentimiento ns ON ns.id = n.id ", fp$conds,
+      " ORDER BY n.fecha DESC, ns.procesado_en DESC LIMIT 10 OFFSET ", off),
+      params = fp$params), error = function(e) data.frame())
+  })
+  observeEvent(input$sent_pag_prev, { if (sent_pagina() > 1L) sent_pagina(sent_pagina() - 1L) })
+  observeEvent(input$sent_pag_next, {
+    np <- max(1L, ceiling(sent_titulares_total() / 10L))
+    if (sent_pagina() < np) sent_pagina(sent_pagina() + 1L)
+  })
+  output$sent_paginacion <- renderUI({
+    total <- sent_titulares_total()
+    if (total == 0L) return(NULL)
+    np <- max(1L, ceiling(total / 10L)); pg <- min(sent_pagina(), np)
+    desde <- (pg - 1L) * 10L + 1L; hasta <- as.integer(min(pg * 10L, total))
+    div(style = "display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top:14px; flex-wrap:wrap;",
+      tags$span(class = "small-metric", style = "margin:0;",
+        sprintf("Mostrando %d–%d de %s", desde, hasta, format(as.integer(total), big.mark = ".", decimal.mark = ","))),
+      div(style = "display:flex; align-items:center; gap:10px;",
+        actionButton("sent_pag_prev", "← Anterior", class = "btn-sm", disabled = pg <= 1L),
+        tags$span(class = "small-metric", style = "margin:0;", sprintf("Página %d de %d", pg, np)),
+        actionButton("sent_pag_next", "Siguiente →", class = "btn-sm", disabled = pg >= np))
     )
-    p %>% config(displayModeBar = TRUE, locale = "es")
+  })
+  output$tabla_sent_titulares <- renderUI({
+    d <- sentimiento_titulares()
+    if (is.null(d) || nrow(d) == 0L)
+      return(div(class = "small-metric", "No hay titulares clasificados para este filtro/período."))
+    cls_map <- c(positivo = "pos", neutral = "neu", negativo = "neg")
+    lab_map <- c(positivo = "Positivo", neutral = "Neutral", negativo = "Negativo")
+    filas <- lapply(seq_len(nrow(d)), function(i) {
+      s <- d$sentimiento[i]; conf <- d$confianza[i]
+      tags$tr(
+        tags$td(class = "meta-celda",
+          tags$span(class = "fecha", format(as.Date(d$fecha[i]), "%d-%m-%Y")),
+          tags$span(class = "medio", nombres_medios(d$fuente[i]))),
+        tags$td(d$titulo[i]),
+        tags$td(style = "width:1%; text-align:center;",
+          tags$span(class = paste("sent-chip", cls_map[[s]]), lab_map[[s]])),
+        tags$td(class = "conf", if (is.na(conf)) "" else paste0(conf, "%"))
+      )
+    })
+    tags$table(class = "sent-tabla", tags$tbody(filas))
+  })
+
+  # ---- Nota de transparencia / cobertura ----
+  output$sent_meta <- renderUI({
+    f <- fechas(); start <- sent_inicio(f$start); end <- f$end
+    m <- tryCatch(dbGetQuery(pool, "
+      SELECT COUNT(ns.id)::int clasif, COUNT(*)::int total,
+             ROUND(AVG(ns.confianza))::int conf, MAX(ns.modelo) modelo
+      FROM noticias n LEFT JOIN noticias_sentimiento ns ON ns.id = n.id
+      WHERE n.fecha >= $1 AND n.fecha <= $2 AND n.titulo IS NOT NULL",
+      params = list(start, end)), error = function(e) NULL)
+    if (is.null(m) || is.na(m$total) || m$total == 0L) return(NULL)
+    cob <- round(100 * m$clasif / m$total)
+    modelo <- if (is.na(m$modelo)) "—" else m$modelo
+    conf <- if (is.na(m$conf)) "s/d" else paste0(m$conf, "%")
+    div(class = "sent-meta", HTML(sprintf(
+      "Cobertura: <b>%s de %s</b> titulares clasificados (<b>%s%%</b>) · modelo <b>%s</b> · confianza media <b>%s</b>. El tono se clasifica con un modelo de lenguaje local sobre el titular.",
+      format(m$clasif, big.mark = ".", decimal.mark = ","), format(m$total, big.mark = ".", decimal.mark = ","), cob, modelo, conf)))
   })
 
   # Poblar selector de medio para gráfico de actores (usa medios ya disponibles en sentimiento_por_fuente)
@@ -2815,7 +3328,7 @@ server <- function(input, output, session) {
   sentimiento_por_actor <- reactive({
     req(input$medio_actor_sentimiento)
     f <- fechas()
-    start <- max(f$start, FECHA_DESDE_DASHBOARD)
+    start <- sent_inicio(f$start)
     tipos <- if (!is.null(input$tipo_actor_filtro) && length(input$tipo_actor_filtro) > 0)
       input$tipo_actor_filtro else c("manual", "auto")
     ph_tipos <- paste(sprintf("$%d", seq(4L, length.out = length(tipos))), collapse = ", ")
@@ -2836,7 +3349,7 @@ server <- function(input, output, session) {
   output$grafico_sentimiento_por_actor <- renderPlotly({
     d <- sentimiento_por_actor()
     sin_datos_msg <- function(msg) {
-      plot_ly() %>%
+      plot_ly(type = "scatter", mode = "markers") %>%
         add_annotations(text = msg, x = 0.5, y = 0.5,
           xref = "paper", yref = "paper", showarrow = FALSE,
           font = list(size = 14, color = "#6c757d")) %>%
@@ -3012,7 +3525,7 @@ server <- function(input, output, session) {
     terms <- input$terminos_medios
     medio_sel <- trimws(if (is.null(input$medio_evolucion_concepto)) "" else input$medio_evolucion_concepto)
     if (is.null(terms) || length(terms) == 0 || nchar(medio_sel) == 0) {
-      return(plot_ly() %>%
+      return(plot_ly(type = "scatter", mode = "markers") %>%
         add_annotations(text = "Selecciona un término y un medio para ver la evolución temporal.",
           x = 0.5, y = 0.5, xref = "paper", yref = "paper", showarrow = FALSE,
           font = list(size = 13, color = "#6c757d")) %>%
@@ -3022,7 +3535,7 @@ server <- function(input, output, session) {
     }
     d <- evolucion_concepto_por_medio()
     if (nrow(d) == 0) {
-      return(plot_ly() %>%
+      return(plot_ly(type = "scatter", mode = "markers") %>%
         add_annotations(text = paste0("Sin datos para los términos seleccionados en \"", medio_sel, "\" en este período."),
           x = 0.5, y = 0.5, xref = "paper", yref = "paper", showarrow = FALSE,
           font = list(size = 13)) %>%
@@ -3097,7 +3610,7 @@ server <- function(input, output, session) {
   output$grafico_terminos_por_medio <- renderPlotly({
     d <- terminos_por_medio_df()
     if (nrow(d) == 0) {
-      return(plot_ly() %>%
+      return(plot_ly(type = "scatter", mode = "markers") %>%
         add_annotations(
           text = "Sin datos para el medio elegido en este período.",
           x = 0.5, y = 0.5, xref = "paper", yref = "paper", showarrow = FALSE,
@@ -3156,7 +3669,7 @@ server <- function(input, output, session) {
   output$grafico_evolucion_terminos_por_medio <- renderPlotly({
     d <- evolucion_terminos_por_medio()
     if (nrow(d) == 0) {
-      return(plot_ly() %>%
+      return(plot_ly(type = "scatter", mode = "markers") %>%
         add_annotations(
           text = "Sin datos para el medio elegido en este período.",
           x = 0.5, y = 0.5, xref = "paper", yref = "paper", showarrow = FALSE,
@@ -3168,7 +3681,7 @@ server <- function(input, output, session) {
     sel_terms <- input$terminos_evol_medio_sel
     if (!is.null(sel_terms) && length(sel_terms) > 0) d <- d[d$termino %in% sel_terms, ]
     if (nrow(d) == 0) {
-      return(plot_ly() %>%
+      return(plot_ly(type = "scatter", mode = "markers") %>%
         add_annotations(
           text = "Selecciona al menos un término arriba.",
           x = 0.5, y = 0.5, xref = "paper", yref = "paper", showarrow = FALSE,
