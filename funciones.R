@@ -419,15 +419,18 @@ guardar_noticias_en_postgres <- function(df, con) {
   staging <- df[, c("id", "titulo", "bajada", "cuerpo", "cuerpo_limpio",
                     "fecha", "fecha_scraping", "url", "fuente", "año")]
 
-  DBI::dbExecute(con, "DROP TABLE IF EXISTS _stg_noticias_scraping")
-  DBI::dbWriteTable(con, "_stg_noticias_scraping", staging, temporary = FALSE, overwrite = TRUE)
-  DBI::dbExecute(con, "ALTER TABLE _stg_noticias_scraping ALTER COLUMN fecha          TYPE DATE USING fecha::date")
-  DBI::dbExecute(con, "ALTER TABLE _stg_noticias_scraping ALTER COLUMN fecha_scraping TYPE DATE USING fecha_scraping::date")
+  # Staging con nombre único por proceso: varios scrapers/backfills pueden
+  # guardar en paralelo sin dropearse la tabla entre sí.
+  stg <- sprintf("_stg_noticias_scraping_%d", Sys.getpid())
+  DBI::dbExecute(con, paste0("DROP TABLE IF EXISTS ", stg))
+  DBI::dbWriteTable(con, stg, staging, temporary = FALSE, overwrite = TRUE)
+  DBI::dbExecute(con, paste0("ALTER TABLE ", stg, " ALTER COLUMN fecha          TYPE DATE USING fecha::date"))
+  DBI::dbExecute(con, paste0("ALTER TABLE ", stg, " ALTER COLUMN fecha_scraping TYPE DATE USING fecha_scraping::date"))
 
-  n <- DBI::dbExecute(con, "
+  n <- DBI::dbExecute(con, paste0("
     INSERT INTO noticias (id, titulo, bajada, cuerpo, cuerpo_limpio, fecha, fecha_scraping, url, fuente, año)
     SELECT id, titulo, bajada, cuerpo, cuerpo_limpio, fecha, fecha_scraping, url, fuente, año
-    FROM _stg_noticias_scraping
+    FROM ", stg, "
     WHERE id IS NOT NULL AND titulo IS NOT NULL AND url IS NOT NULL AND fuente IS NOT NULL AND fecha IS NOT NULL
     ON CONFLICT (url, fuente) DO UPDATE SET
       titulo        = EXCLUDED.titulo,
@@ -436,9 +439,9 @@ guardar_noticias_en_postgres <- function(df, con) {
       cuerpo_limpio = EXCLUDED.cuerpo_limpio,
       fecha_scraping = EXCLUDED.fecha_scraping,
       año           = EXCLUDED.año
-  ")
+  "))
 
-  DBI::dbExecute(con, "DROP TABLE IF EXISTS _stg_noticias_scraping")
+  DBI::dbExecute(con, paste0("DROP TABLE IF EXISTS ", stg))
   message("guardar_noticias_en_postgres: ", n, " filas insertadas/actualizadas.")
   invisible(n)
 }
@@ -709,12 +712,21 @@ ultima_fecha_fuente <- function(fuente, con, default_dias = 7L) {
   }, error = function(e) Sys.Date() - as.integer(default_dias))
 }
 
-# Convierte los días sin datos en número de páginas a scrapear.
-# pags_por_dia: páginas por día de atraso (1.5 ≈ 1 página cubre ~2 días típicos)
-# min_pags: mínimo aunque corra todos los días
-# max_pags: techo para no scrapear demasiado en recuperaciones largas
+# Convierte los días sin datos en número de páginas a scrapear, en función del
+# atraso real: dias = hoy - última fecha de esa fuente en la BD.
+# pags_por_dia: páginas por día de atraso (factor de conversión). Calibrado con
+#   margen: en latercera ~96 páginas cubren >200 días, así que sobra para 2 meses.
+# min_pags: mínimo aunque la fuente esté al día.
+# max_pags: SIN TOPE por defecto (Inf) → se adapta libremente al atraso.
+# Overrides por entorno (para ajustar una puesta al día puntual sin tocar código):
+#   MAX_PAGS_SCRAPING     → fija un techo de páginas
+#   PAGS_POR_DIA_SCRAPING → ajusta el factor páginas/día
 n_paginas_fuente <- function(fuente, con, pags_por_dia = 1.5,
-                              min_pags = 2L, max_pags = 15L) {
+                              min_pags = 2L, max_pags = Inf) {
+  env_ppd <- suppressWarnings(as.numeric(Sys.getenv("PAGS_POR_DIA_SCRAPING", "")))
+  if (!is.na(env_ppd) && env_ppd > 0)  pags_por_dia <- env_ppd
+  env_max <- suppressWarnings(as.numeric(Sys.getenv("MAX_PAGS_SCRAPING", "")))
+  if (!is.na(env_max) && env_max >= 1) max_pags <- env_max
   ultima <- ultima_fecha_fuente(fuente, con)
   dias   <- as.integer(Sys.Date() - ultima)
   as.integer(max(min_pags, min(ceiling(dias * pags_por_dia), max_pags)))
