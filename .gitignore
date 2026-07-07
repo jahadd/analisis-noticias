@@ -44,3 +44,7 @@ Thumbs.db
 *.swo
 
 # Scripts de scraping por fuente: trackeados para sincronizar con la VM
+
+# Datos de backfill y logs generados localmente (datos/ pesa decenas de GB)
+datos/
+logs/
