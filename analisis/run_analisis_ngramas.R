@@ -90,12 +90,38 @@ dbExecute(con, "
 dbExecute(con, "CREATE INDEX IF NOT EXISTS idx_titulos_ngramas_por_medio_fecha  ON titulos_ngramas_por_medio(fecha DESC, tipo)")
 dbExecute(con, "CREATE INDEX IF NOT EXISTS idx_titulos_ngramas_por_medio_fuente ON titulos_ngramas_por_medio(fuente, tipo)")
 
+# Incremental backfill-aware: analisis_cobertura registra cuántas noticias
+# había por fecha al momento del último análisis. Si el conteo cambió
+# (backfill o borrado en fechas antiguas), se reprocesa desde ahí.
+dbExecute(con, "
+  CREATE TABLE IF NOT EXISTS analisis_cobertura (
+    analisis   VARCHAR(40) NOT NULL,
+    fecha      DATE NOT NULL,
+    n_noticias INTEGER NOT NULL,
+    CONSTRAINT pk_analisis_cobertura PRIMARY KEY (analisis, fecha)
+  )
+")
 max_fecha_ngramas <- tryCatch(
   as.Date(dbGetQuery(con, "SELECT MAX(fecha)::text AS f FROM titulos_ngramas_diarios")$f),
   error = function(e) NA
 )
+min_fecha_alterada <- tryCatch(
+  as.Date(dbGetQuery(con, "
+    SELECT MIN(n.fecha)::text AS f
+    FROM (SELECT fecha, COUNT(*) AS n FROM noticias
+          WHERE fecha >= $1 AND titulo IS NOT NULL AND titulo <> ''
+          GROUP BY fecha) n
+    LEFT JOIN analisis_cobertura c ON c.analisis = 'ngramas' AND c.fecha = n.fecha
+    WHERE c.fecha IS NULL OR c.n_noticias <> n.n
+  ", params = list(FECHA_DESDE))$f),
+  error = function(e) NA
+)
 if (!is.na(max_fecha_ngramas)) {
   fecha_desde_inc <- max_fecha_ngramas - 1L
+  if (!is.na(min_fecha_alterada) && min_fecha_alterada < fecha_desde_inc) {
+    fecha_desde_inc <- min_fecha_alterada
+    message("Backfill detectado: noticias nuevas/alteradas desde ", min_fecha_alterada)
+  }
   dbExecute(con, "DELETE FROM titulos_ngramas_diarios  WHERE fecha >= $1", params = list(fecha_desde_inc))
   dbExecute(con, "DELETE FROM titulos_ngramas_por_medio WHERE fecha >= $1", params = list(fecha_desde_inc))
   message("Incremental: reprocesando desde ", fecha_desde_inc, " (último registrado: ", max_fecha_ngramas, ")")
@@ -105,7 +131,7 @@ if (!is.na(max_fecha_ngramas)) {
 }
 
 max_fecha <- tryCatch(
-  as.Date(dbGetQuery(con, "SELECT MAX(fecha)::text AS f FROM noticias")$f),
+  as.Date(dbGetQuery(con, "SELECT LEAST(MAX(fecha), CURRENT_DATE)::text AS f FROM noticias")$f),
   error = function(e) Sys.Date()
 )
 
@@ -219,6 +245,15 @@ for (fecha_ini in as.list(fechas_batch)) {
     total_por_medio <- total_por_medio + n
   }
 }
+
+# Registrar cobertura procesada (para detectar backfills en la próxima corrida)
+dbExecute(con, "
+  INSERT INTO analisis_cobertura (analisis, fecha, n_noticias)
+  SELECT 'ngramas', fecha, COUNT(*) FROM noticias
+  WHERE fecha >= $1 AND titulo IS NOT NULL AND titulo <> ''
+  GROUP BY fecha
+  ON CONFLICT (analisis, fecha) DO UPDATE SET n_noticias = EXCLUDED.n_noticias
+", params = list(fecha_desde_inc))
 
 message("run_analisis_ngramas.R completado.")
 message("  titulos_ngramas_diarios:  ", total_diarios, " filas upsert")

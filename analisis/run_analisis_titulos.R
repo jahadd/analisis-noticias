@@ -594,7 +594,7 @@ FECHA_DESDE <- as.Date("2018-01-01")
 
 rango <- dbGetQuery(con, "
   SELECT COALESCE(MIN(fecha), CURRENT_DATE) AS min_fecha,
-         COALESCE(MAX(fecha), CURRENT_DATE) AS max_fecha,
+         LEAST(COALESCE(MAX(fecha), CURRENT_DATE), CURRENT_DATE) AS max_fecha,
          COUNT(*) AS total
   FROM noticias
   WHERE fecha >= $1
@@ -619,13 +619,38 @@ dbExecute(con, "CREATE INDEX IF NOT EXISTS idx_titulos_terminos_por_medio_fecha 
 dbExecute(con, "CREATE INDEX IF NOT EXISTS idx_titulos_terminos_por_medio_fuente ON titulos_terminos_por_medio(fuente)")
 dbExecute(con, "CREATE INDEX IF NOT EXISTS idx_titulos_terminos_por_medio_fecha_fuente ON titulos_terminos_por_medio(fecha, fuente)")
 
-# Incremental: procesar solo fechas nuevas
+# Incremental: procesar solo fechas nuevas.
+# Backfill-aware: analisis_cobertura registra cuántas noticias había por fecha
+# al momento del último análisis. Si el conteo cambió (backfill o borrado en
+# fechas antiguas), se reprocesa desde la fecha alterada más antigua — solo
+# mirar MAX(fecha) dejaba fuera las noticias insertadas con fecha pasada.
+dbExecute(con, "
+  CREATE TABLE IF NOT EXISTS analisis_cobertura (
+    analisis   VARCHAR(40) NOT NULL,
+    fecha      DATE NOT NULL,
+    n_noticias INTEGER NOT NULL,
+    CONSTRAINT pk_analisis_cobertura PRIMARY KEY (analisis, fecha)
+  )
+")
 max_fecha_terminos <- tryCatch(
   as.Date(dbGetQuery(con, "SELECT MAX(fecha)::text AS f FROM titulos_terminos_diarios")$f),
   error = function(e) NA
 )
+min_fecha_alterada <- tryCatch(
+  as.Date(dbGetQuery(con, "
+    SELECT MIN(n.fecha)::text AS f
+    FROM (SELECT fecha, COUNT(*) AS n FROM noticias WHERE fecha >= $1 GROUP BY fecha) n
+    LEFT JOIN analisis_cobertura c ON c.analisis = 'titulos' AND c.fecha = n.fecha
+    WHERE c.fecha IS NULL OR c.n_noticias <> n.n
+  ", params = list(FECHA_DESDE))$f),
+  error = function(e) NA
+)
 if (!is.na(max_fecha_terminos)) {
   min_fecha <- max_fecha_terminos - 1L
+  if (!is.na(min_fecha_alterada) && min_fecha_alterada < min_fecha) {
+    min_fecha <- min_fecha_alterada
+    message("Backfill detectado: noticias nuevas/alteradas desde ", min_fecha_alterada)
+  }
   dbExecute(con, "DELETE FROM titulos_terminos_diarios  WHERE fecha >= $1", params = list(min_fecha))
   dbExecute(con, "DELETE FROM metricas_titulos_diarias   WHERE fecha >= $1", params = list(min_fecha))
   dbExecute(con, "DELETE FROM titulos_terminos_por_medio WHERE fecha >= $1", params = list(min_fecha))
@@ -1189,6 +1214,16 @@ for (res in resultados) {
 
   todas_las_fechas <- c(todas_las_fechas, as.character(metricas$fecha))
 }
+
+# ------------------------------------------------------------------------------
+# Registrar cobertura procesada (para detectar backfills en la próxima corrida)
+# ------------------------------------------------------------------------------
+dbExecute(con, "
+  INSERT INTO analisis_cobertura (analisis, fecha, n_noticias)
+  SELECT 'titulos', fecha, COUNT(*) FROM noticias
+  WHERE fecha >= $1 GROUP BY fecha
+  ON CONFLICT (analisis, fecha) DO UPDATE SET n_noticias = EXCLUDED.n_noticias
+", params = list(min_fecha))
 
 # ------------------------------------------------------------------------------
 # Resumen

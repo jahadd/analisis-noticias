@@ -589,23 +589,61 @@ message("Conectado a ", PGDATABASE, " en ", PGHOST)
 
 rango <- dbGetQuery(con, "
   SELECT COALESCE(MIN(fecha), CURRENT_DATE) AS min_fecha,
-         COALESCE(MAX(fecha), CURRENT_DATE) AS max_fecha
+         LEAST(COALESCE(MAX(fecha), CURRENT_DATE), CURRENT_DATE) AS max_fecha
   FROM noticias WHERE fecha >= $1
 ", params = list(FECHA_DESDE))
 min_fecha <- max(as.Date(rango$min_fecha), FECHA_DESDE)
 max_fecha <- as.Date(rango$max_fecha)
 message("Rango: ", min_fecha, " a ", max_fecha)
 
-# Incremental: procesar solo fechas nuevas
+# Incremental: procesar solo fechas nuevas.
+# Backfill-aware: analisis_cobertura registra cuántas noticias había por fecha
+# al momento del último análisis. Si el conteo cambió (backfill o borrado en
+# fechas antiguas), se reprocesa desde la fecha alterada más antigua.
+dbExecute(con, "
+  CREATE TABLE IF NOT EXISTS analisis_cobertura (
+    analisis   VARCHAR(40) NOT NULL,
+    fecha      DATE NOT NULL,
+    n_noticias INTEGER NOT NULL,
+    CONSTRAINT pk_analisis_cobertura PRIMARY KEY (analisis, fecha)
+  )
+")
 max_fecha_cooc <- tryCatch(
   as.Date(dbGetQuery(con, "SELECT MAX(fecha)::text AS f FROM titulos_coocurrencia")$f),
   error = function(e) NA
 )
+min_fecha_alterada <- tryCatch(
+  as.Date(dbGetQuery(con, "
+    SELECT MIN(n.fecha)::text AS f
+    FROM (SELECT fecha, COUNT(*) AS n FROM noticias
+          WHERE fecha >= $1 AND titulo IS NOT NULL AND titulo <> ''
+          GROUP BY fecha) n
+    LEFT JOIN analisis_cobertura c ON c.analisis = 'coocurrencia' AND c.fecha = n.fecha
+    WHERE c.fecha IS NULL OR c.n_noticias <> n.n
+  ", params = list(FECHA_DESDE))$f),
+  error = function(e) NA
+)
+full_rebuild <- FALSE
 if (!is.na(max_fecha_cooc)) {
   min_fecha <- max_fecha_cooc - 1L
-  dbExecute(con, "DELETE FROM titulos_coocurrencia WHERE fecha >= $1", params = list(min_fecha))
-  message("Incremental: reprocesando desde ", min_fecha, " (último registrado: ", max_fecha_cooc, ")")
+  if (!is.na(min_fecha_alterada) && min_fecha_alterada < min_fecha) {
+    min_fecha <- min_fecha_alterada
+    message("Backfill detectado: noticias nuevas/alteradas desde ", min_fecha_alterada)
+  }
+  min_fecha_cooc <- as.Date(dbGetQuery(con, "SELECT MIN(fecha)::text AS f FROM titulos_coocurrencia")$f)
+  if (!is.na(min_fecha_cooc) && min_fecha <= min_fecha_cooc) {
+    # El reproceso cubre toda la tabla: TRUNCATE en vez de DELETE — un DELETE
+    # masivo deja millones de tuplas muertas en el índice PK y el INSERT
+    # ... ON CONFLICT final pasa horas sondeándolas (medido: 3h45m vs minutos).
+    full_rebuild <- TRUE
+    dbExecute(con, "TRUNCATE TABLE titulos_coocurrencia")
+    message("Reproceso completo: tabla truncada; procesando desde ", min_fecha)
+  } else {
+    dbExecute(con, "DELETE FROM titulos_coocurrencia WHERE fecha >= $1", params = list(min_fecha))
+    message("Incremental: reprocesando desde ", min_fecha, " (último registrado: ", max_fecha_cooc, ")")
+  }
 } else {
+  full_rebuild <- TRUE
   message("Tabla titulos_coocurrencia vacía — procesando desde: ", min_fecha)
 }
 
@@ -661,21 +699,60 @@ dbExecute(con, "ALTER TABLE _staging_coocurrencia ALTER COLUMN fecha TYPE DATE U
 
 # Use LEAST/GREATEST in the INSERT to enforce canonical order regardless of R locale,
 # and re-aggregate to merge any (a,b)/(b,a) pairs that R's locale may have split.
-n_inserted <- tryCatch(
-  dbExecute(con, "
-    INSERT INTO titulos_coocurrencia (fecha, fuente, termino_a, termino_b, n)
-    SELECT fecha, fuente,
-      LEAST(termino_a, termino_b)    AS termino_a,
-      GREATEST(termino_a, termino_b) AS termino_b,
-      SUM(n) AS n
-    FROM _staging_coocurrencia
-    GROUP BY fecha, fuente, LEAST(termino_a, termino_b), GREATEST(termino_a, termino_b)
-    ON CONFLICT (fecha, fuente, termino_a, termino_b) DO UPDATE SET n = EXCLUDED.n
-  "),
-  error = function(e) { message("INSERT ERROR: ", e$message); 0L }
-)
+if (full_rebuild) {
+  # Tabla recién truncada/vacía: el GROUP BY ya garantiza claves únicas, así
+  # que se puede insertar sin índices (mucho más rápido) y reconstruirlos después.
+  message("Full rebuild: quitando índices para INSERT sin mantenimiento de índice…")
+  dbExecute(con, "ALTER TABLE titulos_coocurrencia DROP CONSTRAINT IF EXISTS pk_titulos_coocurrencia")
+  dbExecute(con, "DROP INDEX IF EXISTS idx_titulos_coocurrencia_fuente_fecha")
+  dbExecute(con, "DROP INDEX IF EXISTS idx_titulos_coocurrencia_terminos")
+  n_inserted <- tryCatch(
+    dbExecute(con, "
+      INSERT INTO titulos_coocurrencia (fecha, fuente, termino_a, termino_b, n)
+      SELECT fecha, fuente,
+        LEAST(termino_a, termino_b)    AS termino_a,
+        GREATEST(termino_a, termino_b) AS termino_b,
+        SUM(n) AS n
+      FROM _staging_coocurrencia
+      GROUP BY fecha, fuente, LEAST(termino_a, termino_b), GREATEST(termino_a, termino_b)
+    "),
+    error = function(e) { message("INSERT ERROR: ", e$message); 0L }
+  )
+  message("Reconstruyendo índices (PK + secundarios)…")
+  dbExecute(con, "ALTER TABLE titulos_coocurrencia ADD CONSTRAINT pk_titulos_coocurrencia PRIMARY KEY (fecha, fuente, termino_a, termino_b)")
+  dbExecute(con, "CREATE INDEX IF NOT EXISTS idx_titulos_coocurrencia_fuente_fecha ON titulos_coocurrencia(fuente, fecha DESC)")
+  dbExecute(con, "CREATE INDEX IF NOT EXISTS idx_titulos_coocurrencia_terminos ON titulos_coocurrencia(termino_a, termino_b)")
+  dbExecute(con, "ANALYZE titulos_coocurrencia")
+} else {
+  n_inserted <- tryCatch(
+    dbExecute(con, "
+      INSERT INTO titulos_coocurrencia (fecha, fuente, termino_a, termino_b, n)
+      SELECT fecha, fuente,
+        LEAST(termino_a, termino_b)    AS termino_a,
+        GREATEST(termino_a, termino_b) AS termino_b,
+        SUM(n) AS n
+      FROM _staging_coocurrencia
+      GROUP BY fecha, fuente, LEAST(termino_a, termino_b), GREATEST(termino_a, termino_b)
+      ON CONFLICT (fecha, fuente, termino_a, termino_b) DO UPDATE SET n = EXCLUDED.n
+    "),
+    error = function(e) { message("INSERT ERROR: ", e$message); 0L }
+  )
+}
 message("INSERT rows affected: ", n_inserted)
 dbExecute(con, "DROP TABLE IF EXISTS _staging_coocurrencia")
+
+# Registrar cobertura procesada (para detectar backfills en la próxima corrida).
+# Solo si el INSERT no falló: registrar con inserción fallida haría que la
+# próxima corrida diera por procesadas fechas que no lo están.
+if (n_inserted > 0L) {
+  dbExecute(con, "
+    INSERT INTO analisis_cobertura (analisis, fecha, n_noticias)
+    SELECT 'coocurrencia', fecha, COUNT(*) FROM noticias
+    WHERE fecha >= $1 AND titulo IS NOT NULL AND titulo <> ''
+    GROUP BY fecha
+    ON CONFLICT (analisis, fecha) DO UPDATE SET n_noticias = EXCLUDED.n_noticias
+  ", params = list(min_fecha))
+}
 
 n_filas <- dbGetQuery(con, "SELECT COUNT(*) AS n FROM titulos_coocurrencia")$n
 message("Listo. Filas escritas en titulos_coocurrencia: ", n_filas)
