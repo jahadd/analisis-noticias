@@ -1681,6 +1681,12 @@ server <- function(input, output, session) {
   })
 
   output$mas_informacion_contenido <- renderUI({
+    # Total de noticias calculado de la BD (redondeado hacia abajo a 0.1M) para que la
+    # cifra mostrada nunca quede obsoleta; fallback estático si la consulta falla.
+    n_noticias_txt <- tryCatch({
+      n <- DBI::dbGetQuery(get_pool(), "SELECT COUNT(*)::float8 AS n FROM noticias")$n
+      paste0("m\u00e1s de ", format(floor(n / 1e5) / 10, decimal.mark = ","), " millones de noticias")
+    }, error = function(e) "m\u00e1s de 1,2 millones de noticias")
     repo_prensa   <- "https://github.com/bastianolea/prensa_chile"
     repo_analisis <- "https://github.com/jahadd/analisis-noticias"
 
@@ -1736,7 +1742,7 @@ server <- function(input, output, session) {
           tags$strong("Datos y scraping: "),
           tags$a(href = repo_prensa, target = "_blank", rel = "noopener",
             "prensa_chile"),
-          " de Bastian Olea Herrera. Base de datos con más de 880.000 noticias recopiladas desde 2018."
+          paste0(" de Bastian Olea Herrera. Base de datos con ", n_noticias_txt, " recopiladas desde 2018.")
         ),
         tags$p(style="font-size:21px; margin:0;",
           tags$strong("Pipeline, análisis y dashboard: "),
