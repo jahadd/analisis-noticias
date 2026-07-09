@@ -1317,9 +1317,12 @@ server <- function(input, output, session) {
     ids_sem <- ids_semanticos_tabla()
     if (!is.null(ids_sem)) {
       if (length(ids_sem) == 0L) return(0L)
-      filtro_medio_sql <- if (!is.null(medio)) " AND fuente = $2" else ""
-      q <- paste0("SELECT COUNT(*) AS n FROM noticias WHERE id = ANY($1)", filtro_medio_sql)
-      params <- list(ids_sem)
+      # DBI/RPostgres no bindea un vector como array PG (lo trata como batch);
+      # expandir a placeholders individuales, como en el resto del archivo.
+      ph_ids <- paste(sprintf("$%d", seq_along(ids_sem)), collapse = ", ")
+      filtro_medio_sql <- if (!is.null(medio)) paste0(" AND fuente = $", length(ids_sem) + 1L) else ""
+      q <- paste0("SELECT COUNT(*) AS n FROM noticias WHERE id = ANY(ARRAY[", ph_ids, "]::text[])", filtro_medio_sql)
+      params <- as.list(ids_sem)
       if (!is.null(medio)) params <- c(params, list(medio))
       out <- dbGetQuery(pool, q, params = params)
       return(as.integer(as.numeric(out$n)))
@@ -1365,14 +1368,19 @@ server <- function(input, output, session) {
     ids_sem <- ids_semanticos_tabla()
     if (!is.null(ids_sem)) {
       if (length(ids_sem) == 0L) return(data.frame(titulo = character(), fecha = character(), medio = character(), url = character()))
-      filtro_medio_sql <- if (!is.null(medio)) " AND fuente = $2" else ""
+      # DBI/RPostgres no bindea un vector como array PG (lo trata como batch);
+      # expandir a placeholders individuales, como en el resto del archivo.
+      ph_ids <- paste(sprintf("$%d", seq_along(ids_sem)), collapse = ", ")
+      n_ids <- length(ids_sem)
+      filtro_medio_sql <- if (!is.null(medio)) paste0(" AND fuente = $", n_ids + 1L) else ""
+      idx_offset <- n_ids + if (!is.null(medio)) 2L else 1L
       q <- paste0(
         "SELECT titulo, fecha, fuente AS medio, url FROM noticias",
-        " WHERE id = ANY($1)", filtro_medio_sql,
+        " WHERE id = ANY(ARRAY[", ph_ids, "]::text[])", filtro_medio_sql,
         " ORDER BY fecha ", dir,
-        " LIMIT 5 OFFSET $", if (!is.null(medio)) 3L else 2L
+        " LIMIT 5 OFFSET $", idx_offset
       )
-      params <- list(ids_sem)
+      params <- as.list(ids_sem)
       if (!is.null(medio)) params <- c(params, list(medio))
       params <- c(params, list((pg - 1L) * 5L))
       return(dbGetQuery(pool, q, params = params))
