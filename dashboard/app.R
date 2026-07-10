@@ -1163,6 +1163,15 @@ server <- function(input, output, session) {
     list(start = start, end = end, anos = anos, por_ano = anos > 2)
   })
 
+  # Granularidad de las series temporales según el rango elegido: diaria hasta 62 días
+  # (rangos cortos como "últimos 7 días" colapsaban a un solo punto mensual), mensual
+  # hasta 2 años y anual después (mismo umbral que por_ano). Valores fijos → seguros
+  # de interpolar en SQL.
+  gran_tiempo <- function(f) {
+    dias <- as.numeric(difftime(f$end, f$start, units = "days"))
+    if (dias <= 62) "day" else if (f$por_ano) "year" else "month"
+  }
+
   # Términos distintos en el período (entero para evitar integer64). Excluye stopwords como en el análisis.
   n_terminos <- reactive({
     f <- fechas()
@@ -1435,13 +1444,13 @@ server <- function(input, output, session) {
         ORDER BY periodo, fuente
       "
     } else {
-      q <- "
-        SELECT DATE_TRUNC('month', fecha)::date AS periodo, fuente AS medio, COUNT(*) AS total
+      q <- paste0("
+        SELECT DATE_TRUNC('", gran_tiempo(f), "', fecha)::date AS periodo, fuente AS medio, COUNT(*) AS total
         FROM noticias
         WHERE fecha >= $1 AND fecha <= $2
         GROUP BY periodo, fuente
         ORDER BY periodo, fuente
-      "
+      ")
     }
     tryCatch({
       r <- dbGetQuery(pool, q, params = list(start, f$end))
@@ -1524,9 +1533,23 @@ server <- function(input, output, session) {
       d$periodo <- as.Date(d$periodo)
       rango <- range(d$periodo)
       dias_rango <- as.numeric(difftime(rango[2], rango[1], units = "days"))
-      breaks_x <- seq(rango[1], rango[2], by = "1 month")
-      tick_fmt <- if (dias_rango <= 90) "%b %Y" else "%b %Y"
+      diario <- gran_tiempo(fechas()) == "day"
+      # Eje X adaptado al rango, con el mismo criterio que el gráfico de volumen general
+      if (!diario) {
+        breaks_x <- seq(rango[1], rango[2], by = "1 month")
+        tick_fmt <- "%b %Y"
+      } else if (dias_rango <= 7) {
+        breaks_x <- seq(rango[1], rango[2], by = "1 day")
+        tick_fmt <- "%d %b"
+      } else if (dias_rango <= 31) {
+        breaks_x <- seq(rango[1], rango[2], by = "2 days")
+        tick_fmt <- "%d %b"
+      } else {
+        breaks_x <- seq(rango[1], rango[2], by = "1 week")
+        tick_fmt <- "%d %b"
+      }
       tickvals_ms <- as.numeric(as.POSIXct(breaks_x, tz = "UTC")) * 1000
+      hover_x <- if (diario) "Fecha: %{x|%d %b %Y}" else "Mes: %{x|%b %Y}"
       for (i in seq_along(medios)) {
         sub <- d %>% filter(medio == medios[i]) %>% arrange(periodo)
         p <- p %>% add_trace(
@@ -1535,11 +1558,11 @@ server <- function(input, output, session) {
           fill = "tozeroy",
           fillcolor = paste0(paleta[i], "30"),
           line = list(width = 2, color = paleta[i]),
-          hovertemplate = paste0("Mes: %{x|%b %Y}<br>Noticias: %{y:,.0f}<br>Medio: ", medios[i], "<extra></extra>")
+          hovertemplate = paste0(hover_x, "<br>Noticias: %{y:,.0f}<br>Medio: ", medios[i], "<extra></extra>")
         )
       }
       p <- p %>% layout(
-        xaxis = list(type = "date", title = list(text = "Mes", standoff = 12),
+        xaxis = list(type = "date", title = list(text = if (diario) "Fecha" else "Mes", standoff = 12),
           tickmode = "array", tickvals = tickvals_ms, ticktext = format(breaks_x, tick_fmt),
           tickangle = -45, tickfont = list(size = 10),
           zeroline = FALSE, showgrid = TRUE),
@@ -3140,7 +3163,7 @@ server <- function(input, output, session) {
     cond <- ""; params <- list(start, end)
     if (m != "todos") { params <- c(params, list(m)); cond <- " AND n.fuente = $3" }
     tryCatch(dbGetQuery(pool, paste0("
-      SELECT date_trunc('month', n.fecha)::date AS mes, ns.sentimiento, COUNT(*)::int n
+      SELECT date_trunc('", gran_tiempo(f), "', n.fecha)::date AS periodo, ns.sentimiento, COUNT(*)::int n
       FROM noticias n JOIN noticias_sentimiento ns ON ns.id = n.id
       WHERE n.fecha >= $1 AND n.fecha <= $2", cond, " GROUP BY 1, 2 ORDER BY 1"),
       params = params), error = function(e) data.frame())
@@ -3148,24 +3171,24 @@ server <- function(input, output, session) {
   output$grafico_sent_evolucion <- renderPlotly({
     d <- sentimiento_evolucion()
     if (is.null(d) || nrow(d) == 0L) return(sent_sin_datos())
-    meses <- sort(unique(d$mes))
-    w <- function(s) { v <- setNames(rep(0L, length(meses)), as.character(meses));
-      sub <- d[d$sentimiento == s, ]; v[as.character(sub$mes)] <- as.integer(sub$n); as.integer(v) }
+    periodos <- sort(unique(d$periodo))
+    w <- function(s) { v <- setNames(rep(0L, length(periodos)), as.character(periodos));
+      sub <- d[d$sentimiento == s, ]; v[as.character(sub$periodo)] <- as.integer(sub$n); as.integer(v) }
     neg <- w("negativo"); neu <- w("neutral"); pos <- w("positivo")
     tot <- neg + neu + pos; tot[tot == 0] <- 1L
     net <- round((pos - neg) / tot * 100)
-    mesD <- as.Date(meses)
+    periodoD <- as.Date(periodos)
     plot_ly() %>%
-      add_trace(x = mesD, y = neg, name = "Negativo", type = "scatter", mode = "none",
+      add_trace(x = periodoD, y = neg, name = "Negativo", type = "scatter", mode = "none",
                 stackgroup = "one", groupnorm = "percent", fillcolor = COL_SENT["negativo"],
                 hovertemplate = "%{y:.0f}%<extra>Negativo</extra>") %>%
-      add_trace(x = mesD, y = neu, name = "Neutral", type = "scatter", mode = "none",
+      add_trace(x = periodoD, y = neu, name = "Neutral", type = "scatter", mode = "none",
                 stackgroup = "one", fillcolor = COL_SENT["neutral"],
                 hovertemplate = "%{y:.0f}%<extra>Neutral</extra>") %>%
-      add_trace(x = mesD, y = pos, name = "Positivo", type = "scatter", mode = "none",
+      add_trace(x = periodoD, y = pos, name = "Positivo", type = "scatter", mode = "none",
                 stackgroup = "one", fillcolor = COL_SENT["positivo"],
                 hovertemplate = "%{y:.0f}%<extra>Positivo</extra>") %>%
-      add_trace(x = mesD, y = net, name = "Tono neto", type = "scatter", mode = "lines+markers",
+      add_trace(x = periodoD, y = net, name = "Tono neto", type = "scatter", mode = "lines+markers",
                 yaxis = "y2", line = list(color = "#0f172a", width = 2),
                 marker = list(size = 4, color = "#0f172a"),
                 hovertemplate = "Tono neto: %{y}<extra></extra>") %>%
