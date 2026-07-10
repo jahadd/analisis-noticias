@@ -245,6 +245,13 @@ run_r "analisis/run_analisis_titulos.R"       "Titulos"       || true
 run_r "analisis/run_embeddings.R"             "Embeddings RAG" || true
 run_r "analisis/run_analisis_coocurrencia.R"  "Coocurrencia"  || true
 
+# Sentimiento (llama3.1:8b vía ellmer, incremental por ID). Ventana móvil de 14 días:
+# clasifica lo reciente en cada corrida sin arrastrar todo el histórico (1.2M) por día.
+# El backlog antiguo se procesa aparte a mano cuando se quiera.
+export SENTIMIENTO_DESDE="$(date -v-14d '+%Y-%m-%d' 2>/dev/null || date -d '14 days ago' '+%Y-%m-%d')"
+run_r "analisis/run_sentimiento_ellmer.R"     "Sentimiento"   || true
+unset SENTIMIENTO_DESDE
+
 # Refrescar vistas materializadas mensuales (para queries rápidas en el dashboard)
 log "--- Refrescando vistas materializadas mensuales ---"
 if [[ -n "$_PG_PASS" ]]; then
