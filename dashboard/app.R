@@ -1671,38 +1671,24 @@ server <- function(input, output, session) {
 
     if (!cfg$tiene_pm) return(data.frame(medio = character(), termino = character(), n = integer()))
 
+    # VSS no se usa aquí: ragnar_retrieve_vss devuelve los K más similares
+    # semánticamente, no todos los artículos que contienen el término; el conteo
+    # por medio queda sesgado a las fuentes mejor representadas en el top-K (mismo
+    # problema que ya se corrigió en datos_evolucion). La tabla precalculada da
+    # conteos exactos por keyword para todos los medios.
     out_list <- vector("list", length(terms))
     for (i in seq_along(terms)) {
-      if (store_disponible()) {
-        r <- tryCatch({
-          res <- ragnar::ragnar_retrieve_vss(rag_store, query = terms[i], top_k = 500)
-          res <- enriquecer_vss(res)
-          if (!is.null(res) && nrow(res) > 0L && !is.null(res$fecha)) {
-            res <- res[!is.na(res$fecha) & res$fecha >= start & res$fecha <= f$end, ]
-          }
-          if (is.null(res) || nrow(res) == 0L) {
-            data.frame(medio = character(), n = integer())
-          } else {
-            res %>%
-              dplyr::group_by(fuente) %>%
-              dplyr::summarise(n = dplyr::n(), .groups = "drop") %>%
-              dplyr::rename(medio = fuente) %>%
-              dplyr::mutate(n = as.integer(n))
-          }
-        }, error = function(e) data.frame(medio = character(), n = integer()))
-      } else {
-        q <- paste0("
-          SELECT fuente AS medio, SUM(", cfg$col_f_pm, ") AS n
-          FROM ", cfg$tabla_pm, "
-          WHERE fecha >= $1 AND fecha <= $2 AND lower(", cfg$col_t_pm, ") = lower($3)", cfg$filtro_tipo_pm, "
-          GROUP BY fuente
-        ")
-        r <- tryCatch(
-          dbGetQuery(pool, q, params = list(start, f$end, terms[i])),
-          error = function(e) data.frame(medio = character(), n = integer())
-        )
-        r$n <- as.integer(as.numeric(r$n))
-      }
+      q <- paste0("
+        SELECT fuente AS medio, SUM(", cfg$col_f_pm, ") AS n
+        FROM ", cfg$tabla_pm, "
+        WHERE fecha >= $1 AND fecha <= $2 AND lower(", cfg$col_t_pm, ") = lower($3)", cfg$filtro_tipo_pm, "
+        GROUP BY fuente
+      ")
+      r <- tryCatch(
+        dbGetQuery(pool, q, params = list(start, f$end, terms[i])),
+        error = function(e) data.frame(medio = character(), n = integer())
+      )
+      r$n <- as.integer(as.numeric(r$n))
       r$termino <- rep(terms[i], nrow(r))
       grid <- expand.grid(medio = medios, termino = terms[i], stringsAsFactors = FALSE)
       r <- left_join(grid, r, by = c("medio", "termino")) %>% mutate(n = coalesce(n, 0L))
