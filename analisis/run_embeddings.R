@@ -83,7 +83,24 @@ STORE_PATH <- file.path(script_dir, "..", "datos", "noticias_rag.duckdb")
 message("[run_embeddings] Store: ", STORE_PATH)
 
 store <- if (file.exists(STORE_PATH)) {
-  ragnar_store_connect(location = STORE_PATH, read_only = FALSE)
+  tryCatch(
+    ragnar_store_connect(location = STORE_PATH, read_only = FALSE),
+    error = function(e) {
+      msg <- conditionMessage(e)
+      if (grepl("lock|LOCK|Conflicting", msg, ignore.case = TRUE)) {
+        message(
+          "[run_embeddings] LOCK: el store está bloqueado por otro proceso ",
+          "(probablemente el dashboard Shiny que mantiene una conexión de lectura).\n",
+          "  → Reiniciar Shiny liberaría el lock. Alternativamente: reindexar ",
+          "manualmente con `Rscript analisis/run_embeddings.R` cuando Shiny esté caído.\n",
+          "  → Detalle técnico: ", msg
+        )
+      } else {
+        message("[run_embeddings] ERROR al abrir store: ", msg)
+      }
+      stop(e)
+    }
+  )
 } else {
   ragnar_store_create(
     location = STORE_PATH,

@@ -1301,20 +1301,14 @@ server <- function(input, output, session) {
   # Dirección de orden para la columna Fecha
   orden_fecha <- reactiveVal("DESC")
 
-  # IDs semánticos para la tabla de noticias (NULL si no aplica)
-  ids_semanticos_tabla <- reactive({
-    if (!store_disponible()) return(NULL)
-    busq <- trimws(if (is.null(input$busqueda_titulo)) "" else input$busqueda_titulo)
-    if (!nzchar(busq)) return(NULL)
-    f <- fechas_noticias()
-    tryCatch({
-      res <- ragnar::ragnar_retrieve_vss(rag_store, query = busq, top_k = 100)
-      if (is.null(res) || nrow(res) == 0L) return(character(0))
-      res <- enriquecer_vss(res)
-      if (!is.null(res$fecha)) res <- res[!is.na(res$fecha) & res$fecha >= f$start & res$fecha <= f$end, ]
-      res$origin
-    }, error = function(e) NULL)
-  })
+  # IDs semánticos para la tabla de noticias.
+  # VSS desactivado: la búsqueda semántica solo devuelve artículos indexados en DuckDB.
+  # Como el store puede estar desactualizado (Shiny mantiene un lock de lectura que
+  # bloquea run_embeddings.R), los artículos recientes quedan invisibles. Además, la
+  # búsqueda por embedding no garantiza coincidencia con la palabra exacta del titular.
+  # El path de regex en PostgreSQL (título ~* \y<término>\y) cubre todos los artículos
+  # en tiempo real y es el correcto para búsqueda por palabra clave.
+  ids_semanticos_tabla <- reactive({ NULL })
 
   # Total de noticias en el rango (desde 2018; con filtro de búsqueda en titulares y medio)
   total_noticias_rango <- reactive({
