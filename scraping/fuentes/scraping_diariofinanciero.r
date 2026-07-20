@@ -25,16 +25,19 @@ resultados_enlaces <- map(enlaces, \(enlace) {
     
     noticias <- bow(enlace) |> scrape()
     
-    enlaces <- noticias |> 
-      # html_elements("#wrap-noticias") |> 
-      html_elements(".tax-list") |> 
-      html_elements(".card__content") |> 
-      html_elements("a") |> 
-      html_attr("href") |> 
-      str_subset("dfsud", negate = T) |> 
-      str_subset("ultimasnoticias/p", negate = T) |> 
-      str_subset("taxport", negate = T) |> 
-      str_trim() |> unique()
+    enlaces <- noticias |>
+      # html_elements("#wrap-noticias") |>
+      html_elements(".tax-list") |>
+      html_elements(".card__content") |>
+      html_elements("a") |>
+      html_attr("href") |>
+      str_subset("dfsud", negate = T) |>
+      str_subset("ultimasnoticias/p", negate = T) |>
+      str_subset("taxport", negate = T) |>
+      str_subset("/p/\\d+$", negate = T) |>
+      str_trim() |>
+      (\(x) x[nchar(x) > 40])() |>
+      unique()
     
     message(glue("Se obtuvieron {length(enlaces)} noticias en {enlace}"))
     
@@ -78,15 +81,17 @@ resultados_categorias <- map(categorias, \(enlace) {
     
     enlaces <- noticias |>
       # html_elements("#wrap-noticias") |>
-      html_elements(".tax-list") |> 
-      html_elements(".card__content") |> 
+      html_elements(".tax-list") |>
+      html_elements(".card__content") |>
       html_elements("a") |>
       html_attr("href") |>
-      str_subset("taxport", negate = T) |> 
-      str_subset("total-brands", negate = T) |> 
-      str_subset("dfsud", negate = T) |> 
-      unique() |> 
-      str_trim()
+      str_subset("taxport", negate = T) |>
+      str_subset("total-brands", negate = T) |>
+      str_subset("dfsud", negate = T) |>
+      str_subset("/p/\\d+$", negate = T) |>
+      str_trim() |>
+      (\(x) x[nchar(x) > 40])() |>
+      unique()
     
     message(glue("Se obtuvieron {length(enlaces)} noticias en {enlace}"))
     return(enlaces)
@@ -138,7 +143,7 @@ resultados_diariofinanciero <- future_map(enlaces_diariofinanciero_2, \(enlace) 
         html_text2()
     }
     
-    if (is.na(titulo)) return(NULL)
+    if (length(titulo) == 0 || is.na(titulo[1])) return(NULL)
     
     bajada <- noticia |> 
       html_elements(".bajada") |> 
