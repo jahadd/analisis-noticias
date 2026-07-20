@@ -12,7 +12,6 @@ con <- conectar_db()
 
 enlaces <- c("https://www.chilevision.cl/noticias",
   "https://www.chilevision.cl/noticias/casos-policiales",
-  "https://www.chilevision.cl/noticias/reportajes-chv",
   "https://www.chilevision.cl/noticias/cazanoticias",
   "https://www.chilevision.cl/noticias/economia")
 
