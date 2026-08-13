@@ -681,7 +681,97 @@ ui <- fluidPage(
       }
       .mi-w95-statusbar a { color: #000080; text-decoration: underline; font-size: 16px; }
       .mi-w95-statusbar span { color: #444; margin-left: auto; }
-      @media (max-width: 768px) { .mi-w95-grid { grid-template-columns: 1fr; } }
+      /* ══════════════════════════════════════════════════════════════════
+         MOBILE — el sidebarLayout de Bootstrap 3 ya apila sidebar→contenido
+         de forma nativa a los 767px (col-sm-* sin col-xs-*). Todo lo de
+         abajo depende de que ese apilado ya haya ocurrido, por eso usa el
+         mismo punto de corte exacto en vez de uno propio (si no, queda una
+         franja donde el sidebar ya se apiló pero nada de esto entró todavía).
+         ══════════════════════════════════════════════════════════════════ */
+      @media (max-width: 767px) {
+        .mi-w95-grid { grid-template-columns: 1fr; }
+
+        /* Sin esto el sidebar apilado ocupa el viewport entero — estaba
+           pensado para cuando vivía al costado, a toda la altura de la
+           pantalla — y el contenido principal queda empujado fuera de vista. */
+        .well { min-height: auto; }
+
+        .container-fluid { padding-left: 0.9rem !important; padding-right: 0.9rem !important; }
+        .col-sm-9 { padding-left: 0.9rem !important; padding-right: 0.9rem !important; }
+
+        /* Los 3 controles de sidebar que en escritorio se empujaban con
+           margin-top gigante (20/27/65rem) para alinearse con contenido de
+           la columna de al lado — en mobile esa columna ya no está al costado.
+           Selectores que ya distinguen exactamente esos 3 casos sin tocar
+           el markup: el único .sidebar-seccion anidado dentro de
+           .sidebar-terminos (tab Medios→Conceptos por medio) y el último
+           hijo de .sidebar-medio-destacados (Términos destacados / Volumen
+           de datos). */
+        .sidebar-terminos .sidebar-seccion,
+        .sidebar-medio-destacados > div:last-child {
+          margin-top: 1rem !important;
+        }
+
+        /* Pestañas (tabs principales + tabs_medios anidado, 8 etiquetas de
+           texto largo en total) no entran en ~360-400px. .nav-tabs de
+           Bootstrap 3 usa float, no flex — se convierte para poder armar una
+           tira horizontal scrolleable en vez de romper el layout con wrap. */
+        .nav-tabs {
+          display: flex !important;
+          flex-wrap: nowrap !important;
+          overflow-x: auto;
+          -webkit-overflow-scrolling: touch;
+        }
+        .nav-tabs > li { float: none; flex: 0 0 auto; }
+        .nav-tabs > li > a {
+          font-size: 1.05rem !important;
+          padding: 0.65rem 0.9rem !important;
+          white-space: nowrap;
+        }
+
+        .preset-buttons { grid-template-columns: 1fr 1fr; }
+        .preset-buttons .btn { font-size: 1.1rem; }
+
+        /* Fila de búsqueda+filtro de noticias (flex fijo 2:1, sin clase en
+           el contenedor): :has() llega al padre sin tocar el markup R.
+           Tambien alcanza (inofensivo) al selector de medio de Sentimiento,
+           que ya tenia flex-wrap propio. */
+        div:has(> .busqueda-noticias) { flex-wrap: wrap !important; }
+        .busqueda-noticias { flex: 1 1 100% !important; min-width: 0 !important; }
+
+        /* Alto de los graficos Plotly: vienen fijos en px como argumento
+           del lado R (no es una clase CSS reutilizable), pensados para
+           pantallas grandes. El ancho ya es responsive al contenedor — el
+           propio archivo ya fuerza un resize de Plotly al cambiar de tab
+           (ver 'shown.bs.tab' mas abajo), asi que el override de alto por
+           CSS es suficiente sin tocar la firma de plotlyOutput(). */
+        #grafico_por_medio, #grafico_por_medio .js-plotly-plot,
+        #red_coocurrencia_plotly, #red_coocurrencia_plotly .js-plotly-plot,
+        #grafico_conceptos_por_medio, #grafico_conceptos_por_medio .js-plotly-plot,
+        #grafico_sentimiento_por_fuente, #grafico_sentimiento_por_fuente .js-plotly-plot {
+          height: 420px !important;
+        }
+        #grafico_top_terminos, #grafico_top_terminos .js-plotly-plot,
+        #grafico_terminos_por_medio, #grafico_terminos_por_medio .js-plotly-plot {
+          height: 400px !important;
+        }
+
+        /* Modal Agente de datos (size='l', ~900px) y su lista de mensajes
+           a alto fijo — sin tratamiento de mobile por defecto en Bootstrap 3. */
+        .modal-dialog { max-width: calc(100vw - 24px) !important; margin: 12px auto !important; }
+        .chat-messages { height: auto !important; max-height: 60dvh !important; }
+      }
+
+      /* Objetivos tactiles: por tipo de dispositivo, no por ancho — mismo
+         criterio que ya usa el resto del sitio (static/style.css,
+         ultimatum_play.html) para las apps del escritorio BabelOS. */
+      @media (pointer: coarse), (hover: none) {
+        .btn, .form-control, .selectize-input { min-height: 44px; }
+        .preset-buttons .btn { min-height: 40px; }
+        /* sliderInput (ion.rangeSlider): thumb chico por defecto. */
+        .irs-handle { width: 26px !important; height: 26px !important; top: 22px !important; }
+        .irs-line, .irs-bar { height: 6px !important; }
+      }
       /* === RED DE PALABRAS: overlay de carga === */
       .red-spinner-wrap { position: relative; }
       .red-loading-overlay {
