@@ -226,6 +226,18 @@ ui <- fluidPage(
         box-shadow: 0 4px 14px rgba(124,58,237,0.18);
         transform: translateY(-1px);
       }
+      /* === GLOBAL TOOLBAR (fecha + presets + agente IA) ===
+         Vive fuera de sidebarLayout — así se puede mostrar antes que las
+         pestañas en mobile sin duplicar el dateRangeInput (mismo id en dos
+         lugares de la página no es válido en Shiny). */
+      .global-toolbar {
+        display: flex; flex-wrap: wrap; align-items: flex-end; gap: 1.5rem;
+        background: #ffffff; border-bottom: 1px solid #e8edf3;
+        box-shadow: 0 2px 14px rgba(15,23,42,0.05);
+        padding: 1.1rem 2rem; margin-bottom: 0;
+      }
+      .global-toolbar .sidebar-seccion { margin-bottom: 0; flex: 1 1 320px; min-width: 260px; }
+      .global-toolbar .btn-ia-sidebar { width: auto; flex-shrink: 0; padding: 13px 22px; }
       /* === TAB NAVIGATION === */
       .nav-tabs {
         border-bottom: 2px solid #e2e8f0 !important;
@@ -699,6 +711,18 @@ ui <- fluidPage(
         .container-fluid { padding-left: 0.9rem !important; padding-right: 0.9rem !important; }
         .col-sm-9 { padding-left: 0.9rem !important; padding-right: 0.9rem !important; }
 
+        /* Pestañas + contenido antes que los filtros por pestaña: sin esto,
+           sidebarPanel (que Shiny siempre renderiza antes que mainPanel en
+           el DOM) deja las pestañas enterradas debajo de toda la columna de
+           filtros. Selector con hijo directo (#main-layout-wrapper > .row)
+           a propósito, para no afectar ningun otro fluidRow()/column() del
+           resto del archivo (ej. las tarjetas metricas de Tendencias). */
+        #main-layout-wrapper > .row { display: flex; flex-direction: column; }
+        #main-layout-wrapper > .row > .col-sm-9 { order: 1; }
+        #main-layout-wrapper > .row > .col-sm-3 { order: 2; }
+
+        .global-toolbar { padding: 0.9rem; gap: 0.9rem; }
+
         /* Los 3 controles de sidebar que en escritorio se empujaban con
            margin-top gigante (20/27/65rem) para alinearse con contenido de
            la columna de al lado — en mobile esa columna ya no está al costado.
@@ -814,13 +838,10 @@ ui <- fluidPage(
     tags$a(href = "/", class = "btn-volver-escritorio", "\u229e Escritorio")
   ),
   p(class = "dashboard-subtitle", "Análisis de los temas que dominan los titulares de los principales medios chilenos"),
-  div(id = "main-layout-wrapper",
-    sidebarLayout(
-      sidebarPanel(
-        width = 3,
-        conditionalPanel(
-          condition = "input.tabs !== 'Más información'",
-          div(class = "sidebar-seccion",
+  conditionalPanel(
+    condition = "input.tabs !== 'Más información'",
+    div(class = "global-toolbar",
+      div(class = "sidebar-seccion",
         tags$label(class = "control-label", "Rango de fechas"),
         dateRangeInput(
           "fechas",
@@ -837,15 +858,20 @@ ui <- fluidPage(
           actionButton("preset_7",  "Últimos 7 días",  class = "btn-sm"),
           actionButton("preset_30", "Último mes",     class = "btn-sm"),
           actionButton("preset_365", "Último año", class = "btn-sm")
-        ),
-        div(style = "margin-top: 14px; padding-top: 12px; border-top: 1px solid #dee2e6;",
-          actionButton("btn_abrir_ia",
-                       label = tagList(icon("robot"), " Agente de datos"),
-                       class = "btn-ia-sidebar")
-        ),
+        )
+      ),
+      actionButton("btn_abrir_ia",
+                   label = tagList(icon("robot"), " Agente de datos"),
+                   class = "btn-ia-sidebar")
+    )
+  ),
+  div(id = "main-layout-wrapper",
+    sidebarLayout(
+      sidebarPanel(
+        width = 3,
         conditionalPanel(
           condition = "!(input.tabs === 'Medios' && input.tabs_medios === 'Volumen de datos')",
-          div(class = "sidebar-seccion", style = "margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #dee2e6;",
+          div(class = "sidebar-seccion",
             tags$label(class = "control-label", "Excluir palabras de los gráficos"),
             tags$div(class = "form-group",
               tags$input(id = "palabras_excluir", type = "text", class = "form-control",
@@ -856,8 +882,6 @@ ui <- fluidPage(
               actionButton("btn_excluir_limpiar", "Limpiar", class = "btn-sm btn-outline-secondary")
             ),
             uiOutput("palabras_excluidas_chips")
-          )
-        )
           )
         ),
         conditionalPanel(
