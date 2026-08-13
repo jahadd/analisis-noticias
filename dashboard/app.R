@@ -111,7 +111,22 @@ ui <- fluidPage(
           $('body').removeClass('tab-mas-info');
         }
       }
-      $(document).on('shiny:connected', function() { setTimeout(syncTabClass, 200); });
+      // En celular, #sidebar-tab-filtros (selector de terminos/medio/sliders
+      // de la pestaña activa) se reubica para quedar entre las pestañas y su
+      // contenido, en vez de al final de todo junto con el resto del sidebar.
+      // Mueve el nodo real (no lo clona) — el id sigue existiendo una sola
+      // vez en la pagina, asi que no rompe el binding de Shiny. Selector con
+      // hijos directos (.col-sm-9 > .tabbable > .tab-content) para alcanzar
+      // solo el tabsetPanel principal, no el anidado 'tabs_medios'.
+      function reubicarFiltrosMobile() {
+        if (window.innerWidth > 767) return;
+        var $filtros = $('#sidebar-tab-filtros');
+        var $tabContent = $('#main-layout-wrapper > .row > .col-sm-9 > .tabbable > .tab-content');
+        if ($filtros.length && $tabContent.length) {
+          $filtros.insertBefore($tabContent);
+        }
+      }
+      $(document).on('shiny:connected', function() { setTimeout(syncTabClass, 200); setTimeout(reubicarFiltrosMobile, 200); });
       $(document).on('click', '.nav-tabs a', function() { setTimeout(syncTabClass, 50); });
       // Forzar resize de Plotly al mostrar cualquier tab (corrige gráficos cortados)
       $(document).on('shown.bs.tab', function() {
@@ -226,18 +241,6 @@ ui <- fluidPage(
         box-shadow: 0 4px 14px rgba(124,58,237,0.18);
         transform: translateY(-1px);
       }
-      /* === GLOBAL TOOLBAR (fecha + presets + agente IA) ===
-         Vive fuera de sidebarLayout — así se puede mostrar antes que las
-         pestañas en mobile sin duplicar el dateRangeInput (mismo id en dos
-         lugares de la página no es válido en Shiny). */
-      .global-toolbar {
-        display: flex; flex-wrap: wrap; align-items: flex-end; gap: 1.5rem;
-        background: #ffffff; border-bottom: 1px solid #e8edf3;
-        box-shadow: 0 2px 14px rgba(15,23,42,0.05);
-        padding: 1.1rem 2rem; margin-bottom: 0;
-      }
-      .global-toolbar .sidebar-seccion { margin-bottom: 0; flex: 1 1 320px; min-width: 260px; }
-      .global-toolbar .btn-ia-sidebar { width: auto; flex-shrink: 0; padding: 13px 22px; }
       /* === TAB NAVIGATION === */
       .nav-tabs {
         border-bottom: 2px solid #e2e8f0 !important;
@@ -721,7 +724,16 @@ ui <- fluidPage(
         #main-layout-wrapper > .row > .col-sm-9 { order: 1; }
         #main-layout-wrapper > .row > .col-sm-3 { order: 2; }
 
-        .global-toolbar { padding: 0.9rem; gap: 0.9rem; }
+        /* #sidebar-tab-filtros (selector de términos / medio / sliders de
+           la pestaña activa) lo reubica el JS de mas abajo para que quede
+           entre las pestañas y el contenido, en vez de al final de todo
+           junto con el resto del sidebar. Estilo propio porque deja de
+           estar dentro de la columna gris del sidebar. */
+        #sidebar-tab-filtros {
+          background: #fff; border: 1px solid #e8edf3; border-radius: 10px;
+          padding: 1rem 1.1rem; margin: 0.9rem 0;
+          box-shadow: 0 2px 14px rgba(15,23,42,0.05);
+        }
 
         /* Los 3 controles de sidebar que en escritorio se empujaban con
            margin-top gigante (20/27/65rem) para alinearse con contenido de
@@ -838,10 +850,13 @@ ui <- fluidPage(
     tags$a(href = "/", class = "btn-volver-escritorio", "\u229e Escritorio")
   ),
   p(class = "dashboard-subtitle", "Análisis de los temas que dominan los titulares de los principales medios chilenos"),
-  conditionalPanel(
-    condition = "input.tabs !== 'Más información'",
-    div(class = "global-toolbar",
-      div(class = "sidebar-seccion",
+  div(id = "main-layout-wrapper",
+    sidebarLayout(
+      sidebarPanel(
+        width = 3,
+        conditionalPanel(
+          condition = "input.tabs !== 'Más información'",
+          div(class = "sidebar-seccion",
         tags$label(class = "control-label", "Rango de fechas"),
         dateRangeInput(
           "fechas",
@@ -858,20 +873,15 @@ ui <- fluidPage(
           actionButton("preset_7",  "Últimos 7 días",  class = "btn-sm"),
           actionButton("preset_30", "Último mes",     class = "btn-sm"),
           actionButton("preset_365", "Último año", class = "btn-sm")
-        )
-      ),
-      actionButton("btn_abrir_ia",
-                   label = tagList(icon("robot"), " Agente de datos"),
-                   class = "btn-ia-sidebar")
-    )
-  ),
-  div(id = "main-layout-wrapper",
-    sidebarLayout(
-      sidebarPanel(
-        width = 3,
+        ),
+        div(style = "margin-top: 14px; padding-top: 12px; border-top: 1px solid #dee2e6;",
+          actionButton("btn_abrir_ia",
+                       label = tagList(icon("robot"), " Agente de datos"),
+                       class = "btn-ia-sidebar")
+        ),
         conditionalPanel(
           condition = "!(input.tabs === 'Medios' && input.tabs_medios === 'Volumen de datos')",
-          div(class = "sidebar-seccion",
+          div(class = "sidebar-seccion", style = "margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #dee2e6;",
             tags$label(class = "control-label", "Excluir palabras de los gráficos"),
             tags$div(class = "form-group",
               tags$input(id = "palabras_excluir", type = "text", class = "form-control",
@@ -883,7 +893,10 @@ ui <- fluidPage(
             ),
             uiOutput("palabras_excluidas_chips")
           )
+        )
+          )
         ),
+        div(id = "sidebar-tab-filtros",
         conditionalPanel(
           condition = "input.tabs === 'Más información'",
           div(class = "sidebar-seccion sidebar-insights",
@@ -967,6 +980,7 @@ ui <- fluidPage(
             sliderInput("max_nodos_red", "Máximo de nodos", min = 10L, max = 150L, value = 50L, step = 10L),
             uiOutput("slider_semantico_red_ui")
           )
+        )
         )
     ),
 
