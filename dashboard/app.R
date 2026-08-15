@@ -95,17 +95,27 @@ onStop(function() {
   if (!is.null(pool_global)) poolClose(pool_global)
 })
 
+source("i18n.R")
+
 # ------------------------------------------------------------------------------
 # UI
 # ------------------------------------------------------------------------------
-ui <- fluidPage(
+# ui es function(request) (no un fluidPage estatico) para poder leer la
+# cookie babelos_lang y acertar el idioma en el primer render — el dashboard
+# vive en el mismo origen que el sitio padre (via /shiny/), asi que el
+# navegador ya la envia. El cambio de idioma EN CALIENTE (con el dashboard
+# ya abierto) lo hace el shim JS de mas abajo via data-i18n, sin depender de
+# este primer render.
+ui <- function(request) {
+lang <- i18n_lang_from_request(request)
+fluidPage(
   tags$head(
-    tags$title("Monitor de Noticias Chile — Seguimiento de tendencias en prensa (2018-2026)"),
+    tags$title(i18n_tr("page.title", lang)),
     tags$link(rel = "stylesheet", href = "https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Inter:wght@400;500;600;700&display=swap"),
     tags$script(HTML("
       function syncTabClass() {
         var active = $('.nav-tabs li.active a').attr('data-value') || '';
-        if (active === 'M\\u00e1s informaci\\u00f3n') {
+        if (active === 'mas_info') {
           $('body').addClass('tab-mas-info');
         } else {
           $('body').removeClass('tab-mas-info');
@@ -137,6 +147,73 @@ ui <- fluidPage(
         if (!btn) return;
         btn.disabled = msg.disabled;
         btn.textContent = msg.label;
+      });
+
+      /* Traduccion del shell estatico (lo que no re-renderiza Shiny via
+         renderUI): titulo, subtitulo, boton de escritorio, labels del
+         sidebar y nombres de pestaña. Mantener en sync con dashboard/i18n.R
+         (mismas claves) — el contenido dinamico (renderUI/renderPlotly) se
+         traduce del lado del servidor via current_lang()/tr(). */
+      var BABEL_SHELL = {
+        'page.title': {es: 'Monitor de Noticias Chile \\u2014 Seguimiento de tendencias en prensa (2018-2026)', en: 'Chile News Monitor \\u2014 Tracking Press Trends (2018-2026)'},
+        'page.subtitle': {es: 'An\\u00e1lisis de los temas que dominan los titulares de los principales medios chilenos', en: 'Analysis of the topics dominating headlines across major Chilean media outlets'},
+        'nav.desktop_link': {es: 'Escritorio', en: 'Desktop'},
+        'sidebar.date_range': {es: 'Rango de fechas', en: 'Date range'}
+      };
+      var BABEL_TAB_LABELS = {
+        'tendencias': {es: 'Tendencias', en: 'Trends'},
+        'medios': {es: 'Medios', en: 'Media'},
+        'sentimiento': {es: 'Sentimiento', en: 'Sentiment'},
+        'mas_info': {es: 'M\\u00e1s informaci\\u00f3n', en: 'More information'},
+        'conceptos_por_medio': {es: 'Conceptos por medio', en: 'Concepts by outlet'},
+        'terminos_destacados': {es: 'T\\u00e9rminos destacados', en: 'Top terms'},
+        'volumen_datos': {es: 'Volumen de datos', en: 'Data volume'},
+        'red_palabras': {es: 'Red de palabras', en: 'Word network'}
+      };
+
+      function applyBabelLanguage(lang) {
+        if (lang !== 'es' && lang !== 'en') return;
+        document.documentElement.setAttribute('lang', lang);
+        var titleEntry = BABEL_SHELL['page.title'];
+        if (titleEntry) document.title = titleEntry[lang];
+        document.querySelectorAll('[data-i18n]').forEach(function(el) {
+          var entry = BABEL_SHELL[el.getAttribute('data-i18n')];
+          if (entry && entry[lang]) el.textContent = entry[lang];
+        });
+        document.querySelectorAll('.nav-tabs a[data-value]').forEach(function(a) {
+          var entry = BABEL_TAB_LABELS[a.getAttribute('data-value')];
+          if (entry && entry[lang]) a.textContent = entry[lang];
+        });
+        var options = document.querySelectorAll('.news-language-switcher [data-babel-lang]');
+        options.forEach(function(btn) {
+          btn.classList.toggle('active', btn.getAttribute('data-babel-lang') === lang);
+        });
+        if (window.Shiny) Shiny.setInputValue('babel_lang', lang);
+      }
+
+      function resolveBabelLanguage() {
+        try {
+          var stored = window.localStorage.getItem('babelos-language');
+          if (stored === 'es' || stored === 'en') return stored;
+        } catch (e) {}
+        return document.documentElement.getAttribute('lang') || 'es';
+      }
+
+      $(document).on('shiny:connected', function() {
+        applyBabelLanguage(resolveBabelLanguage());
+      });
+      $(document).on('click', '.news-language-switcher [data-babel-lang]', function() {
+        var lang = this.getAttribute('data-babel-lang');
+        try { window.localStorage.setItem('babelos-language', lang); } catch (e) {}
+        applyBabelLanguage(lang);
+      });
+      window.addEventListener('message', function(event) {
+        if (event.data && event.data.type === 'babelos-language') {
+          applyBabelLanguage(event.data.language);
+        }
+      });
+      window.addEventListener('storage', function(event) {
+        if (event.key === 'babelos-language') applyBabelLanguage(event.newValue);
       });
     ")),
     tags$style(HTML("
@@ -190,6 +267,14 @@ ui <- fluidPage(
         white-space: nowrap; transition: background 0.15s;
       }
       .btn-volver-escritorio:hover { background: #0d6efd; color: #fff !important; text-decoration: none !important; }
+      .news-language-switcher { display: flex; gap: 4px; }
+      .news-language-switcher .lang-btn {
+        border: 1px solid #e2e8f0; background: #fff; color: #64748b;
+        border-radius: 7px; padding: 5px 10px; font-size: 1.2rem; font-weight: 700;
+        letter-spacing: 0.03em; cursor: pointer; transition: all 0.14s;
+      }
+      .news-language-switcher .lang-btn:hover { border-color: #cbd5e1; color: #0f172a; }
+      .news-language-switcher .lang-btn.active { background: #0d6efd; border-color: #0d6efd; color: #fff; }
       /* === LAYOUT === */
       .container-fluid { padding-left: 2rem !important; padding-right: 2rem !important; }
       /* Main content column: breathing room from sidebar */
@@ -846,18 +931,23 @@ ui <- fluidPage(
   ),
   div(style = "padding: 1rem 1rem 0;"),
   div(class = "titulo-row",
-    h1(class = "dashboard-title", "Monitor de Noticias Chile — Seguimiento de tendencias en prensa (2018-2026)"),
-    tags$a(href = "/", class = "btn-volver-escritorio", "\u229e Escritorio")
+    h1(class = "dashboard-title", `data-i18n` = "page.title", i18n_tr("page.title", lang)),
+    tags$a(href = "/", class = "btn-volver-escritorio",
+      HTML(paste0("\u229e <span data-i18n=\"nav.desktop_link\">", i18n_tr("nav.desktop_link", lang), "</span>"))),
+    div(class = "news-language-switcher", role = "group", `aria-label` = "Idioma",
+      tags$button(type = "button", class = "lang-btn", `data-babel-lang` = "es", "ES"),
+      tags$button(type = "button", class = "lang-btn", `data-babel-lang` = "en", "EN")
+    )
   ),
-  p(class = "dashboard-subtitle", "Análisis de los temas que dominan los titulares de los principales medios chilenos"),
+  p(class = "dashboard-subtitle", `data-i18n` = "page.subtitle", i18n_tr("page.subtitle", lang)),
   div(id = "main-layout-wrapper",
     sidebarLayout(
       sidebarPanel(
         width = 3,
         conditionalPanel(
-          condition = "input.tabs !== 'Más información'",
+          condition = "input.tabs !== 'mas_info'",
           div(class = "sidebar-seccion",
-        tags$label(class = "control-label", "Rango de fechas"),
+        tags$label(class = "control-label", `data-i18n` = "sidebar.date_range", i18n_tr("sidebar.date_range", lang)),
         dateRangeInput(
           "fechas",
           label = NULL,
@@ -880,7 +970,7 @@ ui <- fluidPage(
                        class = "btn-ia-sidebar")
         ),
         conditionalPanel(
-          condition = "!(input.tabs === 'Medios' && input.tabs_medios === 'Volumen de datos')",
+          condition = "!(input.tabs === 'medios' && input.tabs_medios === 'volumen_datos')",
           div(class = "sidebar-seccion", style = "margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #dee2e6;",
             tags$label(class = "control-label", "Excluir palabras de los gráficos"),
             tags$div(class = "form-group",
@@ -898,13 +988,13 @@ ui <- fluidPage(
         ),
         div(id = "sidebar-tab-filtros",
         conditionalPanel(
-          condition = "input.tabs === 'Más información'",
+          condition = "input.tabs === 'mas_info'",
           div(class = "sidebar-seccion sidebar-insights",
             tags$p(style = "font-size:0.85em; color:#6c757d; padding: 4px 8px;", "Detalles técnicos del proyecto.")
           )
         ),
         conditionalPanel(
-          condition = "input.tabs === 'Tendencias'",
+          condition = "input.tabs === 'tendencias'",
         div(class = "sidebar-seccion sidebar-terminos",
           uiOutput("selector_terminos_evol"),
           div(class = "busqueda-termino",
@@ -925,7 +1015,7 @@ ui <- fluidPage(
         )
       ),
         conditionalPanel(
-          condition = "input.tabs === 'Medios' && input.tabs_medios === 'Conceptos por medio'",
+          condition = "input.tabs === 'medios' && input.tabs_medios === 'conceptos_por_medio'",
           div(class = "sidebar-seccion sidebar-terminos",
             uiOutput("selector_terminos_medios"),
             div(class = "busqueda-termino",
@@ -950,7 +1040,7 @@ ui <- fluidPage(
           )
         ),
         conditionalPanel(
-          condition = "input.tabs === 'Medios' && input.tabs_medios === 'Términos destacados'",
+          condition = "input.tabs === 'medios' && input.tabs_medios === 'terminos_destacados'",
           div(class = "sidebar-medio-destacados",
             tags$label(class = "control-label", style = "display: block; margin-bottom: 6px; font-weight: 600;", "Elegir medio"),
             uiOutput("selector_medio_terminos"),
@@ -961,7 +1051,7 @@ ui <- fluidPage(
           )
         ),
         conditionalPanel(
-          condition = "input.tabs === 'Medios' && input.tabs_medios === 'Volumen de datos'",
+          condition = "input.tabs === 'medios' && input.tabs_medios === 'volumen_datos'",
           div(class = "sidebar-medio-destacados",
             div(style = "margin-top: 65rem; padding-top: 1rem; border-top: 1px solid #dee2e6;",
               tags$label(class = "control-label", style = "display: block; margin-bottom: 6px; font-weight: 600;", "Medios en el gráfico"),
@@ -970,7 +1060,7 @@ ui <- fluidPage(
           )
         ),
         conditionalPanel(
-          condition = "input.tabs === 'Medios' && input.tabs_medios === 'Red de palabras'",
+          condition = "input.tabs === 'medios' && input.tabs_medios === 'red_palabras'",
           div(class = "sidebar-seccion",
             div(class = "form-group",
               tags$label(class = "control-label", "Medio"),
@@ -989,7 +1079,7 @@ ui <- fluidPage(
       tabsetPanel(
         id = "tabs",
         tabPanel(
-          "Tendencias",
+          i18n_tr("tab.tendencias", lang), value = "tendencias",
           fluidRow(
             column(6, uiOutput("card_terminos_distintos")),
             column(6, uiOutput("card_termino_top"))
@@ -1008,10 +1098,11 @@ ui <- fluidPage(
             h4("Noticias recientes"),
             div(style = "display: flex; gap: 8px; align-items: flex-end; margin-bottom: 0.5rem;",
               div(class = "busqueda-noticias", style = "flex: 2; min-width: 0;",
-                textInput("busqueda_titulo", label = NULL, placeholder = "Buscar en titulares…", width = "100%")
+                textInput("busqueda_titulo", label = NULL, placeholder = i18n_tr("search.placeholder_titles", lang), width = "100%")
               ),
               div(class = "busqueda-noticias", style = "flex: 1; min-width: 120px;",
-                selectInput("filtro_medio_noticias", label = NULL, choices = c("Todos"), selected = "Todos", width = "100%")
+                selectInput("filtro_medio_noticias", label = NULL,
+                  choices = setNames("todos", i18n_tr("filter.all_media", lang)), selected = "todos", width = "100%")
               )
             ),
             uiOutput("paginacion_noticias"),
@@ -1020,10 +1111,10 @@ ui <- fluidPage(
           )
         ),
         tabPanel(
-          "Medios",
+          i18n_tr("tab.medios", lang), value = "medios",
           tabsetPanel(id = "tabs_medios",
             tabPanel(
-              "Conceptos por medio",
+              i18n_tr("tab.conceptos_por_medio", lang), value = "conceptos_por_medio",
               div(class = "chart-card",
                 h4("¿Qué palabras usa cada medio?"),
                 tags$p(class = "small-metric", "Cuántas noticias de cada medio mencionan el término buscado en el titular, dentro del período seleccionado."),
@@ -1036,7 +1127,7 @@ ui <- fluidPage(
               )
             ),
             tabPanel(
-              "Términos destacados",
+              i18n_tr("tab.terminos_destacados", lang), value = "terminos_destacados",
               div(class = "chart-card",
                 h4("Los temas favoritos de cada medio"),
                 tags$p(class = "small-metric", "Los términos que más aparecen en los titulares del medio seleccionado."),
@@ -1049,7 +1140,7 @@ ui <- fluidPage(
               )
             ),
             tabPanel(
-              "Volumen de datos",
+              i18n_tr("tab.volumen_datos", lang), value = "volumen_datos",
               div(class = "chart-card",
                 h4("Volumen de noticias por medio"),
                 tags$p(class = "small-metric", HTML(paste0(
@@ -1065,7 +1156,7 @@ ui <- fluidPage(
               )
             ),
             tabPanel(
-              "Red de palabras",
+              i18n_tr("tab.red_palabras", lang), value = "red_palabras",
               div(class = "chart-card red-spinner-wrap",
                 h4("Palabras que aparecen juntas en los titulares"),
                 tags$p(class = "small-metric", "Términos que aparecen en el mismo titular con frecuencia. Cuanto más grueso el nodo, más conexiones tiene."),
@@ -1081,7 +1172,7 @@ ui <- fluidPage(
           )
         ),
         tabPanel(
-          "Sentimiento",
+          i18n_tr("tab.sentimiento", lang), value = "sentimiento",
           # Aviso cuando el rango elegido excede la cobertura del análisis de sentimiento
           uiOutput("sent_aviso_rango"),
           # FILA SUPERIOR — tono neto (card aparte, acento) + distribución con selector de medio
@@ -1110,7 +1201,7 @@ ui <- fluidPage(
           uiOutput("sent_meta")
         ),
         tabPanel(
-          "Más información",
+          i18n_tr("tab.mas_info", lang), value = "mas_info",
           div(class = "insights-tab",
             uiOutput("mas_informacion_contenido")
           )
@@ -1120,11 +1211,22 @@ ui <- fluidPage(
   )
 )
 )
+}
 
 # ------------------------------------------------------------------------------
 # Server
 # ------------------------------------------------------------------------------
 server <- function(input, output, session) {
+
+  # Idioma en caliente: input$babel_lang lo fija el shim JS (postMessage /
+  # localStorage / click en el switcher). El primer valor coincide con el
+  # que ya se uso para el primer render (cookie, ver ui <- function(request)),
+  # asi que no hay parpadeo al conectar.
+  current_lang <- reactive({
+    lang <- input$babel_lang
+    if (is.null(lang) || !(lang %in% c("es", "en"))) "es" else lang
+  })
+  tr <- function(key) i18n_tr(key, current_lang())
 
   pool <- get_pool()
 
@@ -1443,7 +1545,7 @@ server <- function(input, output, session) {
     f <- fechas_noticias()
     start <- f$start
     busq <- trimws(if (is.null(input$busqueda_titulo)) "" else input$busqueda_titulo)
-    medio <- if (is.null(input$filtro_medio_noticias) || input$filtro_medio_noticias == "Todos") NULL else input$filtro_medio_noticias
+    medio <- if (is.null(input$filtro_medio_noticias) || input$filtro_medio_noticias == "todos") NULL else input$filtro_medio_noticias
 
     ids_sem <- ids_semanticos_tabla()
     if (!is.null(ids_sem)) {
@@ -1478,9 +1580,10 @@ server <- function(input, output, session) {
   observeEvent(input$filtro_medio_noticias, { page_noticias(1L) }, ignoreInit = TRUE)
 
   observe({
-    medios <- noticias_por_medio()$medio
+    medios <- sort(noticias_por_medio()$medio)
     updateSelectInput(session, "filtro_medio_noticias",
-      choices = c("Todos", sort(medios)), selected = "Todos")
+      choices = setNames(c("todos", medios), c(tr("filter.all_media"), medios)),
+      selected = "todos")
   })
   observeEvent(input$toggle_fecha_orden, {
     orden_fecha(if (orden_fecha() == "DESC") "ASC" else "DESC")
@@ -1494,7 +1597,7 @@ server <- function(input, output, session) {
     pg <- max(1L, as.integer(page_noticias()))
     dir <- if (orden_fecha() == "ASC") "ASC" else "DESC"
     busq <- trimws(if (is.null(input$busqueda_titulo)) "" else input$busqueda_titulo)
-    medio <- if (is.null(input$filtro_medio_noticias) || input$filtro_medio_noticias == "Todos") NULL else input$filtro_medio_noticias
+    medio <- if (is.null(input$filtro_medio_noticias) || input$filtro_medio_noticias == "todos") NULL else input$filtro_medio_noticias
 
     ids_sem <- ids_semanticos_tabla()
     if (!is.null(ids_sem)) {
