@@ -176,7 +176,58 @@ i18n_strings <- list(
   "media.sidebar.terms_in_chart" = list(es = "Términos en el gráfico", en = "Terms in the chart"),
   "media.sidebar.outlets_in_chart" = list(es = "Medios en el gráfico", en = "Outlets in the chart"),
   "media.sidebar.min_cooccurrence" = list(es = "Co-ocurrencia mínima", en = "Minimum co-occurrence"),
-  "media.sidebar.max_nodes" = list(es = "Máximo de nodos", en = "Maximum nodes")
+  "media.sidebar.max_nodes" = list(es = "Máximo de nodos", en = "Maximum nodes"),
+
+  # ── Pestaña Sentimiento ─────────────────────────────────────────────────
+  "sent.distribution.title" = list(es = "Distribución del tono", en = "Tone distribution"),
+  "sent.distribution.all_media" = list(es = "Todos los medios", en = "All media"),
+  "sent.table.title" = list(es = "Titulares clasificados", en = "Classified headlines"),
+  "sent.table.hint" = list(
+    es = "Titulares con su tono y confianza. El filtro de tono se controla con un clic en la barra de distribución de arriba.",
+    en = "Headlines with their tone and confidence. The tone filter is controlled by clicking the distribution bar above."
+  ),
+  "sent.subtitle.all_media" = list(es = "Mostrando todos los medios — elige uno para ver su detalle", en = "Showing all outlets — choose one to see its detail"),
+  "sent.subtitle.showing_prefix" = list(es = "Mostrando:", en = "Showing:"),
+  "sent.no_data" = list(es = "Sin datos de sentimiento para este período todavía.", en = "No sentiment data for this period yet."),
+  "sent.coverage_notice" = list(
+    es = "El análisis de sentimiento cubre titulares desde el <b>%s</b> hasta el <b>%s</b>. Lo que ves abajo corresponde solo a ese período; el resto del rango elegido no tiene titulares clasificados.",
+    en = "The sentiment analysis covers headlines from <b>%s</b> to <b>%s</b>. What you see below corresponds only to that period; the rest of the selected range has no classified headlines."
+  ),
+  "sent.hero.title" = list(es = "Tono neto del período", en = "Net tone for the period"),
+  "sent.hero.no_data" = list(es = "Sin titulares clasificados aún", en = "No headlines classified yet"),
+  "sent.hero.dominant_negative" = list(es = "Predomina el tono negativo", en = "Negative tone predominates"),
+  "sent.hero.dominant_positive" = list(es = "Predomina el tono positivo", en = "Positive tone predominates"),
+  "sent.hero.balanced" = list(es = "Tono mayormente equilibrado", en = "Mostly balanced tone"),
+  "sent.hero.vs_previous" = list(es = "vs. período anterior", en = "vs. previous period"),
+  "sent.bar.no_data" = list(es = "Sin datos en el período.", en = "No data in this period."),
+  "sent.chip.negative" = list(es = "Negativos", en = "Negative"),
+  "sent.chip.neutral" = list(es = "Neutrales", en = "Neutral"),
+  "sent.chip.positive" = list(es = "Positivos", en = "Positive"),
+  "sent.bar.filtered_to" = list(es = "Tabla filtrada a", en = "Table filtered to"),
+  "sent.bar.clear" = list(es = "× limpiar", en = "× clear"),
+  "sent.bar.click_hint" = list(es = "Haz clic en un color para filtrar ese tono en la tabla de abajo.", en = "Click a color to filter that tone in the table below."),
+  "sent.legend.negative" = list(es = "Negativo", en = "Negative"),
+  "sent.legend.neutral" = list(es = "Neutral", en = "Neutral"),
+  "sent.legend.positive" = list(es = "Positivo", en = "Positive"),
+  "sent.legend.net_tone" = list(es = "Tono neto", en = "Net tone"),
+  "sent.chart.hover.net_tone" = list(es = "Tono neto: ", en = "Net tone: "),
+  "sent.chart.axis.composition" = list(es = "Composición", en = "Composition"),
+  "sent.bento.evolution.title" = list(es = "¿Cómo cambió el tono en el tiempo?", en = "How did the tone change over time?"),
+  "sent.bento.evolution.hint" = list(
+    es = "Composición mensual del tono (100% apilado) y línea de tono neto: porcentaje de positivos menos negativos.",
+    en = "Monthly tone composition (100% stacked) and net tone line: percentage of positive minus negative."
+  ),
+  "sent.bento.by_outlet.title" = list(es = "¿Qué medios son más positivos o negativos?", en = "Which outlets are more positive or negative?"),
+  "sent.bento.by_outlet.hint" = list(
+    es = "Contraste del tono entre todos los medios, de más positivo (arriba) a más negativo (abajo). Elige un medio arriba para ver su detalle.",
+    en = "Tone contrast across all outlets, from most positive (top) to most negative (bottom). Choose an outlet above to see its detail."
+  ),
+  "sent.pagination.showing" = list(es = "Mostrando", en = "Showing"),
+  "sent.table.no_headlines" = list(es = "No hay titulares clasificados para este filtro/período.", en = "No headlines classified for this filter/period."),
+  "sent.meta.coverage" = list(
+    es = "Cobertura: <b>%s de %s</b> titulares clasificados (<b>%s%%</b>) · modelo <b>%s</b> · confianza media <b>%s</b>. El tono se clasifica con un modelo de lenguaje local sobre el titular.",
+    en = "Coverage: <b>%s of %s</b> headlines classified (<b>%s%%</b>) · model <b>%s</b> · average confidence <b>%s</b>. Tone is classified using a local language model on the headline."
+  )
 )
 
 #' Traduce una clave al idioma indicado (por defecto "es").

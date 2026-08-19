@@ -1180,11 +1180,11 @@ fluidPage(
             uiOutput("sent_hero_net"),
             div(class = "chart-card sent-distrib-card",
               div(class = "sent-card-head",
-                h4("Distribución del tono"),
+                h4(i18n_tr("sent.distribution.title", lang)),
                 div(class = "sent-medio busqueda-noticias",
-                  tags$span(class = "lbl", "Medio"),
+                  tags$span(class = "lbl", i18n_tr("media.chart.axis.outlet", lang)),
                   selectInput("sent_filtro_medio", label = NULL,
-                    choices = c("Todos los medios" = "todos"), selected = "todos", width = "220px"))
+                    choices = setNames("todos", i18n_tr("sent.distribution.all_media", lang)), selected = "todos", width = "220px"))
               ),
               uiOutput("sent_barra_periodo")
             )
@@ -1193,8 +1193,8 @@ fluidPage(
           uiOutput("sent_bento"),
           # TABLA paginada (10 por página)
           div(class = "chart-card",
-            h4("Titulares clasificados"),
-            tags$p(class = "small-metric", "Titulares con su tono y confianza. El filtro de tono se controla con un clic en la barra de distribución de arriba."),
+            h4(i18n_tr("sent.table.title", lang)),
+            tags$p(class = "small-metric", i18n_tr("sent.table.hint", lang)),
             uiOutput("tabla_sent_titulares"),
             div(class = "sent-paginacion", uiOutput("sent_paginacion"))
           ),
@@ -3210,7 +3210,7 @@ server <- function(input, output, session) {
     "t13"="T13","theclinic"="The Clinic","redgol"="RedGol","lasegunda"="La Segunda",
     "eldesconcierto"="El Desconcierto","quintopoder"="El Quinto Poder","izquierdadiario"="La Izquierda Diario")
   nombres_medios <- function(x) { y <- NOMBRES_MEDIOS[x]; y[is.na(y)] <- x[is.na(y)]; unname(y) }
-  sent_sin_datos <- function(msg = "Sin datos de sentimiento para este período todavía.") {
+  sent_sin_datos <- function(msg = tr("sent.no_data")) {
     plot_ly(type = "scatter", mode = "markers") %>%
       add_annotations(text = msg, x = 0.5, y = 0.5, xref = "paper", yref = "paper",
                       showarrow = FALSE, font = list(size = 15, color = "#94a3b8", family = "Inter, sans-serif")) %>%
@@ -3235,8 +3235,8 @@ server <- function(input, output, session) {
   output$sent_subtitulo <- renderUI({
     m <- medio_sel()
     tags$p(class = "sent-hint", if (m == "todos")
-      "Mostrando todos los medios — elige uno para ver su detalle"
-      else paste0("Mostrando: ", nombres_medios(m)))
+      tr("sent.subtitle.all_media")
+      else paste0(tr("sent.subtitle.showing_prefix"), " ", nombres_medios(m)))
   })
 
   # ---- Cobertura real del análisis de sentimiento ----
@@ -3283,7 +3283,7 @@ server <- function(input, output, session) {
     div(class = "sent-aviso-rango",
       tags$span("⚠"),
       tags$span(HTML(sprintf(
-        "El análisis de sentimiento cubre titulares desde el <b>%s</b> hasta el <b>%s</b>. Lo que ves abajo corresponde solo a ese período; el resto del rango elegido no tiene titulares clasificados.",
+        tr("sent.coverage_notice"),
         format(cob$desde, "%d-%m-%Y"), format(cob$hasta, "%d-%m-%Y")))))
   })
 
@@ -3318,18 +3318,18 @@ server <- function(input, output, session) {
   output$sent_hero_net <- renderUI({
     s <- sentimiento_periodo()
     if (s$tot == 0L) return(div(class = "sent-net-card neu",
-      div(class = "lbl", "Tono neto del período"), div(class = "big", "—"),
-      div(class = "desc", "Sin titulares clasificados aún")))
+      div(class = "lbl", tr("sent.hero.title")), div(class = "big", "—"),
+      div(class = "desc", tr("sent.hero.no_data"))))
     net <- round(s$net)
     cls  <- if (net <= -8) "neg" else if (net >= 8) "pos" else "neu"
-    desc <- if (net <= -8) "Predomina el tono negativo"
-            else if (net >= 8) "Predomina el tono positivo"
-            else "Tono mayormente equilibrado"
+    desc <- if (net <= -8) tr("sent.hero.dominant_negative")
+            else if (net >= 8) tr("sent.hero.dominant_positive")
+            else tr("sent.hero.balanced")
     delta <- if (is.na(s$net_prev)) NA_real_ else net - round(s$net_prev)
     vs <- if (is.na(delta)) NULL else div(class = "vs",
-      sprintf("%s %d vs. período anterior", if (delta > 0) "▲" else if (delta < 0) "▼" else "→", abs(delta)))
+      sprintf("%s %d %s", if (delta > 0) "▲" else if (delta < 0) "▼" else "→", abs(delta), tr("sent.hero.vs_previous")))
     div(class = paste("sent-net-card", cls),
-      div(class = "lbl", "Tono neto del período"),
+      div(class = "lbl", tr("sent.hero.title")),
       div(class = "big", sprintf("%+d", net)),
       div(class = "desc", desc),
       vs)
@@ -3338,7 +3338,7 @@ server <- function(input, output, session) {
   # ---- Barra 100% interactiva (clic = filtro de tono de la tabla) ----
   output$sent_barra_periodo <- renderUI({
     s <- sentimiento_periodo()
-    if (s$tot == 0L) return(div(class = "small-metric", "Sin datos en el período."))
+    if (s$tot == 0L) return(div(class = "small-metric", tr("sent.bar.no_data")))
     fr <- s$cur / s$tot * 100
     activo <- tono_sel()
     seg <- function(tono, cls, val) {
@@ -3349,25 +3349,25 @@ server <- function(input, output, session) {
           if (val >= 8) paste0(round(val), "%") else "")
     }
     chip_cls <- c(negativo = "neg", neutral = "neu", positivo = "pos")
-    chip_lab <- c(negativo = "Negativos", neutral = "Neutrales", positivo = "Positivos")
+    chip_lab <- c(negativo = tr("sent.chip.negative"), neutral = tr("sent.chip.neutral"), positivo = tr("sent.chip.positive"))
     filtro_info <- if (activo != "todos")
       div(class = "sent-filtro-activo",
-        tags$span("Tabla filtrada a "),
+        tags$span(paste0(tr("sent.bar.filtered_to"), " ")),
         tags$span(class = paste("sent-chip", chip_cls[[activo]]), chip_lab[[activo]]),
         tags$button(class = "limpiar", type = "button",
-          onclick = "Shiny.setInputValue('sent_bar_click','__clear__',{priority:'event'})", "× limpiar"))
+          onclick = "Shiny.setInputValue('sent_bar_click','__clear__',{priority:'event'})", tr("sent.bar.clear")))
     else
       div(class = "sent-filtro-activo",
-        tags$span(style = "color:#94a3b8;", "Haz clic en un color para filtrar ese tono en la tabla de abajo."))
+        tags$span(style = "color:#94a3b8;", tr("sent.bar.click_hint")))
     tagList(
       div(class = trimws(paste("sent-bar", if (activo != "todos") "has-sel" else "")),
         seg("negativo", "neg", fr["negativo"]),
         seg("neutral",  "neu", fr["neutral"]),
         seg("positivo", "pos", fr["positivo"])),
       div(class = "sent-legend vals",
-        span(tags$i(style = "background:#dc2626"), paste0("Negativo ", round(fr["negativo"]), "%")),
-        span(tags$i(style = "background:#94a3b8"), paste0("Neutral ", round(fr["neutral"]), "%")),
-        span(tags$i(style = "background:#16a34a"), paste0("Positivo ", round(fr["positivo"]), "%"))),
+        span(tags$i(style = "background:#dc2626"), paste0(tr("sent.legend.negative"), " ", round(fr["negativo"]), "%")),
+        span(tags$i(style = "background:#94a3b8"), paste0(tr("sent.legend.neutral"), " ", round(fr["neutral"]), "%")),
+        span(tags$i(style = "background:#16a34a"), paste0(tr("sent.legend.positive"), " ", round(fr["positivo"]), "%"))),
       filtro_info
     )
   })
@@ -3394,23 +3394,23 @@ server <- function(input, output, session) {
     net <- round((pos - neg) / tot * 100)
     periodoD <- as.Date(periodos)
     plot_ly() %>%
-      add_trace(x = periodoD, y = neg, name = "Negativo", type = "scatter", mode = "none",
+      add_trace(x = periodoD, y = neg, name = tr("sent.legend.negative"), type = "scatter", mode = "none",
                 stackgroup = "one", groupnorm = "percent", fillcolor = COL_SENT["negativo"],
-                hovertemplate = "%{y:.0f}%<extra>Negativo</extra>") %>%
-      add_trace(x = periodoD, y = neu, name = "Neutral", type = "scatter", mode = "none",
+                hovertemplate = paste0("%{y:.0f}%<extra>", tr("sent.legend.negative"), "</extra>")) %>%
+      add_trace(x = periodoD, y = neu, name = tr("sent.legend.neutral"), type = "scatter", mode = "none",
                 stackgroup = "one", fillcolor = COL_SENT["neutral"],
-                hovertemplate = "%{y:.0f}%<extra>Neutral</extra>") %>%
-      add_trace(x = periodoD, y = pos, name = "Positivo", type = "scatter", mode = "none",
+                hovertemplate = paste0("%{y:.0f}%<extra>", tr("sent.legend.neutral"), "</extra>")) %>%
+      add_trace(x = periodoD, y = pos, name = tr("sent.legend.positive"), type = "scatter", mode = "none",
                 stackgroup = "one", fillcolor = COL_SENT["positivo"],
-                hovertemplate = "%{y:.0f}%<extra>Positivo</extra>") %>%
-      add_trace(x = periodoD, y = net, name = "Tono neto", type = "scatter", mode = "lines+markers",
+                hovertemplate = paste0("%{y:.0f}%<extra>", tr("sent.legend.positive"), "</extra>")) %>%
+      add_trace(x = periodoD, y = net, name = tr("sent.legend.net_tone"), type = "scatter", mode = "lines+markers",
                 yaxis = "y2", line = list(color = "#0f172a", width = 2),
                 marker = list(size = 4, color = "#0f172a"),
-                hovertemplate = "Tono neto: %{y}<extra></extra>") %>%
+                hovertemplate = paste0(tr("sent.chart.hover.net_tone"), "%{y}<extra></extra>")) %>%
       layout(font = list(family = "Inter, sans-serif"),
         xaxis = list(title = "", showgrid = FALSE),
-        yaxis = list(title = "Composición", ticksuffix = "%", range = c(0, 100), showgrid = FALSE),
-        yaxis2 = list(title = "Tono neto", overlaying = "y", side = "right", range = c(-100, 100),
+        yaxis = list(title = tr("sent.chart.axis.composition"), ticksuffix = "%", range = c(0, 100), showgrid = FALSE),
+        yaxis2 = list(title = tr("sent.legend.net_tone"), overlaying = "y", side = "right", range = c(-100, 100),
                       zeroline = TRUE, zerolinecolor = "#cbd5e1", showgrid = FALSE),
         legend = list(orientation = "h", x = 0, y = 1.13, font = list(size = 11)),
         hovermode = "x unified", margin = list(t = 34, b = 28, l = 52, r = 56)) %>%
@@ -3434,15 +3434,15 @@ server <- function(input, output, session) {
     ord <- order(ppos - pneg)               # ascendente → más positivo arriba (barras h se apilan de abajo)
     nm <- nombres_medios(medios[ord]); yf <- factor(nm, levels = nm)
     plot_ly() %>%
-      add_trace(y = yf, x = pneg[ord], name = "Negativo", type = "bar", orientation = "h",
+      add_trace(y = yf, x = pneg[ord], name = tr("sent.legend.negative"), type = "bar", orientation = "h",
                 marker = list(color = COL_SENT["negativo"]), customdata = neg[ord],
-                hovertemplate = "%{x:.0f}%  (%{customdata})<extra>Negativo</extra>") %>%
-      add_trace(y = yf, x = pneu[ord], name = "Neutral", type = "bar", orientation = "h",
+                hovertemplate = paste0("%{x:.0f}%  (%{customdata})<extra>", tr("sent.legend.negative"), "</extra>")) %>%
+      add_trace(y = yf, x = pneu[ord], name = tr("sent.legend.neutral"), type = "bar", orientation = "h",
                 marker = list(color = COL_SENT["neutral"]), customdata = neu[ord],
-                hovertemplate = "%{x:.0f}%  (%{customdata})<extra>Neutral</extra>") %>%
-      add_trace(y = yf, x = ppos[ord], name = "Positivo", type = "bar", orientation = "h",
+                hovertemplate = paste0("%{x:.0f}%  (%{customdata})<extra>", tr("sent.legend.neutral"), "</extra>")) %>%
+      add_trace(y = yf, x = ppos[ord], name = tr("sent.legend.positive"), type = "bar", orientation = "h",
                 marker = list(color = COL_SENT["positivo"]), customdata = pos[ord],
-                hovertemplate = "%{x:.0f}%  (%{customdata})<extra>Positivo</extra>") %>%
+                hovertemplate = paste0("%{x:.0f}%  (%{customdata})<extra>", tr("sent.legend.positive"), "</extra>")) %>%
       layout(barmode = "stack", font = list(family = "Inter, sans-serif"),
         xaxis = list(title = "", ticksuffix = "%", range = c(0, 100), showgrid = FALSE),
         yaxis = list(title = "", automargin = TRUE),
@@ -3454,14 +3454,14 @@ server <- function(input, output, session) {
   # ---- Evolución en el tiempo, y debajo el ranking de medios (cuando es "Todos") ----
   output$sent_bento <- renderUI({
     evo <- div(class = "chart-card",
-      h4("¿Cómo cambió el tono en el tiempo?"),
-      tags$p(class = "small-metric", "Composición mensual del tono (100% apilado) y línea de tono neto: porcentaje de positivos menos negativos."),
+      h4(tr("sent.bento.evolution.title")),
+      tags$p(class = "small-metric", tr("sent.bento.evolution.hint")),
       plotlyOutput("grafico_sent_evolucion", height = "400px"))
     if (medio_sel() == "todos") {
       tagList(evo,
         div(class = "chart-card",
-          h4("¿Qué medios son más positivos o negativos?"),
-          tags$p(class = "small-metric", "Contraste del tono entre todos los medios, de más positivo (arriba) a más negativo (abajo). Elige un medio arriba para ver su detalle."),
+          h4(tr("sent.bento.by_outlet.title")),
+          tags$p(class = "small-metric", tr("sent.bento.by_outlet.hint")),
           plotlyOutput("grafico_sentimiento_por_fuente", height = "640px")))
     } else {
       evo
@@ -3478,7 +3478,7 @@ server <- function(input, output, session) {
     ch <- ch[order(names(ch))]
     sel <- isolate(input$sent_filtro_medio); if (is.null(sel)) sel <- "todos"
     updateSelectInput(session, "sent_filtro_medio",
-      choices = c("Todos los medios" = "todos", ch), selected = sel)
+      choices = c(setNames("todos", tr("sent.distribution.all_media")), ch), selected = sel)
   })
 
   # ---- Tabla de titulares: filtros compartidos + paginación (10 por página) ----
@@ -3523,19 +3523,19 @@ server <- function(input, output, session) {
     desde <- (pg - 1L) * 10L + 1L; hasta <- as.integer(min(pg * 10L, total))
     div(style = "display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top:14px; flex-wrap:wrap;",
       tags$span(class = "small-metric", style = "margin:0;",
-        sprintf("Mostrando %d–%d de %s", desde, hasta, format(as.integer(total), big.mark = ".", decimal.mark = ","))),
+        sprintf("%s %d–%d %s %s", tr("sent.pagination.showing"), desde, hasta, tr("trends.pagination.of"), format(as.integer(total), big.mark = ".", decimal.mark = ","))),
       div(style = "display:flex; align-items:center; gap:10px;",
-        actionButton("sent_pag_prev", "← Anterior", class = "btn-sm", disabled = pg <= 1L),
-        tags$span(class = "small-metric", style = "margin:0;", sprintf("Página %d de %d", pg, np)),
-        actionButton("sent_pag_next", "Siguiente →", class = "btn-sm", disabled = pg >= np))
+        actionButton("sent_pag_prev", tr("trends.pagination.prev"), class = "btn-sm", disabled = pg <= 1L),
+        tags$span(class = "small-metric", style = "margin:0;", sprintf("%s %d %s %d", tr("trends.pagination.page"), pg, tr("trends.pagination.of"), np)),
+        actionButton("sent_pag_next", tr("trends.pagination.next"), class = "btn-sm", disabled = pg >= np))
     )
   })
   output$tabla_sent_titulares <- renderUI({
     d <- sentimiento_titulares()
     if (is.null(d) || nrow(d) == 0L)
-      return(div(class = "small-metric", "No hay titulares clasificados para este filtro/período."))
+      return(div(class = "small-metric", tr("sent.table.no_headlines")))
     cls_map <- c(positivo = "pos", neutral = "neu", negativo = "neg")
-    lab_map <- c(positivo = "Positivo", neutral = "Neutral", negativo = "Negativo")
+    lab_map <- c(positivo = tr("sent.legend.positive"), neutral = tr("sent.legend.neutral"), negativo = tr("sent.legend.negative"))
     filas <- lapply(seq_len(nrow(d)), function(i) {
       s <- d$sentimiento[i]; conf <- d$confianza[i]
       tags$tr(
@@ -3565,7 +3565,7 @@ server <- function(input, output, session) {
     modelo <- if (is.na(m$modelo)) "—" else m$modelo
     conf <- if (is.na(m$conf)) "s/d" else paste0(m$conf, "%")
     div(class = "sent-meta", HTML(sprintf(
-      "Cobertura: <b>%s de %s</b> titulares clasificados (<b>%s%%</b>) · modelo <b>%s</b> · confianza media <b>%s</b>. El tono se clasifica con un modelo de lenguaje local sobre el titular.",
+      tr("sent.meta.coverage"),
       format(m$clasif, big.mark = ".", decimal.mark = ","), format(m$total, big.mark = ".", decimal.mark = ","), cob, modelo, conf)))
   })
 
