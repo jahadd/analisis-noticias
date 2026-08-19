@@ -112,6 +112,13 @@ fluidPage(
   tags$head(
     tags$title(i18n_tr("page.title", lang)),
     tags$link(rel = "stylesheet", href = "https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Inter:wght@400;500;600;700&display=swap"),
+    # Idioma con el que el servidor renderizo ESTA pagina (cookie babelos_lang,
+    # ver i18n_lang_from_request arriba) — el shim JS de mas abajo lo compara
+    # contra el idioma pedido por el usuario para decidir si hace falta recargar.
+    tags$script(HTML(paste0(
+      "window.__SERVER_LANG__ = '", lang, "';",
+      "document.documentElement.setAttribute('lang', '", lang, "');"
+    ))),
     tags$script(HTML("
       function syncTabClass() {
         var active = $('.nav-tabs li.active a').attr('data-value') || '';
@@ -149,46 +156,26 @@ fluidPage(
         btn.textContent = msg.label;
       });
 
-      /* Traduccion del shell estatico (lo que no re-renderiza Shiny via
-         renderUI): titulo, subtitulo, boton de escritorio, labels del
-         sidebar y nombres de pestaña. Mantener en sync con dashboard/i18n.R
-         (mismas claves) — el contenido dinamico (renderUI/renderPlotly) se
-         traduce del lado del servidor via current_lang()/tr(). */
-      var BABEL_SHELL = {
-        'page.title': {es: 'Monitor de Noticias Chile \\u2014 Seguimiento de tendencias en prensa (2018-2026)', en: 'Chile News Monitor \\u2014 Tracking Press Trends (2018-2026)'},
-        'page.subtitle': {es: 'An\\u00e1lisis de los temas que dominan los titulares de los principales medios chilenos', en: 'Analysis of the topics dominating headlines across major Chilean media outlets'},
-        'nav.desktop_link': {es: 'Escritorio', en: 'Desktop'},
-        'sidebar.date_range': {es: 'Rango de fechas', en: 'Date range'}
-      };
-      var BABEL_TAB_LABELS = {
-        'tendencias': {es: 'Tendencias', en: 'Trends'},
-        'medios': {es: 'Medios', en: 'Media'},
-        'sentimiento': {es: 'Sentimiento', en: 'Sentiment'},
-        'mas_info': {es: 'M\\u00e1s informaci\\u00f3n', en: 'More information'},
-        'conceptos_por_medio': {es: 'Conceptos por medio', en: 'Concepts by outlet'},
-        'terminos_destacados': {es: 'T\\u00e9rminos destacados', en: 'Top terms'},
-        'volumen_datos': {es: 'Volumen de datos', en: 'Data volume'},
-        'red_palabras': {es: 'Red de palabras', en: 'Word network'}
-      };
-
-      function applyBabelLanguage(lang) {
-        if (lang !== 'es' && lang !== 'en') return;
-        document.documentElement.setAttribute('lang', lang);
-        var titleEntry = BABEL_SHELL['page.title'];
-        if (titleEntry) document.title = titleEntry[lang];
-        document.querySelectorAll('[data-i18n]').forEach(function(el) {
-          var entry = BABEL_SHELL[el.getAttribute('data-i18n')];
-          if (entry && entry[lang]) el.textContent = entry[lang];
-        });
-        document.querySelectorAll('.nav-tabs a[data-value]').forEach(function(a) {
-          var entry = BABEL_TAB_LABELS[a.getAttribute('data-value')];
-          if (entry && entry[lang]) a.textContent = entry[lang];
-        });
-        var options = document.querySelectorAll('.news-language-switcher [data-babel-lang]');
-        options.forEach(function(btn) {
-          btn.classList.toggle('active', btn.getAttribute('data-babel-lang') === lang);
-        });
-        if (window.Shiny) Shiny.setInputValue('babel_lang', lang);
+      /* Cambio de idioma: ui(request) NO es reactivo en Shiny -- se evalua UNA
+         SOLA VEZ por conexion/pagina, asi que el titulo, el sidebar completo,
+         los titulos/descripciones de cada grafico y todo lo demas armado
+         directamente ahi (no via renderUI/renderPlotly) no puede parchearse
+         solo con JS sin duplicar el catalogo completo de dashboard/i18n.R en
+         el cliente (que fue el enfoque anterior, BABEL_SHELL, y por eso solo
+         cubria 4 claves sueltas del shell -- todo lo demas quedaba congelado
+         en el idioma con el que cargo la pagina). En vez de eso: si el
+         idioma pedido no coincide con window.__SERVER_LANG__ (el que ya uso
+         el servidor para ESTE render, ver script anterior), se escribe la
+         cookie babelos_lang y se recarga la pagina -- el proximo render usa
+         el idioma correcto de punta a punta en un solo paso, sin necesidad
+         de mantener un catalogo JS en paralelo. El contenido dinamico
+         (renderUI/renderPlotly) sigue via current_lang()/tr() del lado del
+         servidor, sincronizado sin recarga por Shiny.setInputValue mas
+         abajo (cubre el intervalo breve antes de que la recarga ocurra). */
+      function writeBabelCookie(lang) {
+        try {
+          document.cookie = 'babelos_lang=' + lang + '; path=/; max-age=31536000; samesite=lax';
+        } catch (e) {}
       }
 
       function resolveBabelLanguage() {
@@ -196,16 +183,36 @@ fluidPage(
           var stored = window.localStorage.getItem('babelos-language');
           if (stored === 'es' || stored === 'en') return stored;
         } catch (e) {}
-        return document.documentElement.getAttribute('lang') || 'es';
+        return window.__SERVER_LANG__ || 'es';
+      }
+
+      function applyBabelLanguage(lang) {
+        if (lang !== 'es' && lang !== 'en') return;
+        try { window.localStorage.setItem('babelos-language', lang); } catch (e) {}
+        if (lang === window.__SERVER_LANG__) {
+          try { window.sessionStorage.removeItem('babel-reload-guard'); } catch (e) {}
+          if (window.Shiny) Shiny.setInputValue('babel_lang', lang);
+          return;
+        }
+        try {
+          // Ya recargamos una vez para este idioma exacto y el servidor sigue
+          // sin coincidir (p. ej. cookies bloqueadas) -- no reintentar en bucle,
+          // conformarse con la sincronizacion reactiva del lado cliente.
+          if (window.sessionStorage.getItem('babel-reload-guard') === lang) {
+            if (window.Shiny) Shiny.setInputValue('babel_lang', lang);
+            return;
+          }
+          window.sessionStorage.setItem('babel-reload-guard', lang);
+        } catch (e) {}
+        writeBabelCookie(lang);
+        window.location.reload();
       }
 
       $(document).on('shiny:connected', function() {
         applyBabelLanguage(resolveBabelLanguage());
       });
       $(document).on('click', '.news-language-switcher [data-babel-lang]', function() {
-        var lang = this.getAttribute('data-babel-lang');
-        try { window.localStorage.setItem('babelos-language', lang); } catch (e) {}
-        applyBabelLanguage(lang);
+        applyBabelLanguage(this.getAttribute('data-babel-lang'));
       });
       window.addEventListener('message', function(event) {
         if (event.data && event.data.type === 'babelos-language') {
@@ -267,7 +274,11 @@ fluidPage(
         white-space: nowrap; transition: background 0.15s;
       }
       .btn-volver-escritorio:hover { background: #0d6efd; color: #fff !important; text-decoration: none !important; }
-      .news-language-switcher { display: flex; gap: 4px; }
+      /* Selector de idioma: solo tiene sentido en la pestaña standalone (el
+         idioma embebido lo define la configuración de la página padre y ya
+         llega sincronizado vía cookie/postMessage). */
+      .news-language-switcher { display: none; }
+      .standalone .news-language-switcher { display: flex; gap: 4px; }
       .news-language-switcher .lang-btn {
         border: 1px solid #e2e8f0; background: #fff; color: #64748b;
         border-radius: 7px; padding: 5px 10px; font-size: 1.2rem; font-weight: 700;
@@ -912,7 +923,14 @@ fluidPage(
     ")),
     tags$script(HTML("
       (function() {
-        if (window.self === window.top) {
+        // El dashboard SIEMPRE corre dentro de un iframe (tanto embebido en
+        // el escritorio como en su pestaña standalone), asi que
+        // window.self === window.top nunca distingue los dos casos aqui —
+        // a diferencia de otras apps del sitio. La pestaña standalone
+        // (templates/noticias_standalone.html) le agrega '?standalone=1' a
+        // la URL del iframe para marcar la diferencia.
+        var params = new URLSearchParams(window.location.search);
+        if (params.get('standalone') === '1') {
           document.documentElement.classList.add('standalone');
         }
       })();
@@ -935,8 +953,8 @@ fluidPage(
     tags$a(href = "/", class = "btn-volver-escritorio",
       HTML(paste0("\u229e <span data-i18n=\"nav.desktop_link\">", i18n_tr("nav.desktop_link", lang), "</span>"))),
     div(class = "news-language-switcher", role = "group", `aria-label` = i18n_tr("language.label", lang),
-      tags$button(type = "button", class = "lang-btn", `data-babel-lang` = "es", "ES"),
-      tags$button(type = "button", class = "lang-btn", `data-babel-lang` = "en", "EN")
+      tags$button(type = "button", class = paste("lang-btn", if (lang == "es") "active" else ""), `data-babel-lang` = "es", "ES"),
+      tags$button(type = "button", class = paste("lang-btn", if (lang == "en") "active" else ""), `data-babel-lang` = "en", "EN")
     )
   ),
   p(class = "dashboard-subtitle", `data-i18n` = "page.subtitle", i18n_tr("page.subtitle", lang)),
