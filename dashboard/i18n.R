@@ -81,7 +81,102 @@ i18n_strings <- list(
   "trends.table.col.link" = list(es = "Enlace", en = "Link"),
   "trends.table.col.title" = list(es = "Título", en = "Title"),
   "trends.table.col.date" = list(es = "Fecha", en = "Date"),
-  "trends.table.col.media" = list(es = "Medio", en = "Media")
+  "trends.table.col.media" = list(es = "Medio", en = "Media"),
+
+  # ── Pestaña Medios ──────────────────────────────────────────────────────
+  "media.tab.concepts.chart1.title" = list(es = "¿Qué palabras usa cada medio?", en = "What words does each outlet use?"),
+  "media.tab.concepts.chart1.hint" = list(
+    es = "Cuántas noticias de cada medio mencionan el término buscado en el titular, dentro del período seleccionado.",
+    en = "How many headlines from each outlet mention the searched term, within the selected period."
+  ),
+  "media.tab.concepts.chart2.title" = list(es = "¿Cómo evolucionó este concepto en cada medio?", en = "How did this concept evolve at each outlet?"),
+  "media.tab.concepts.chart2.hint" = list(
+    es = "Evolución temporal del término buscado por medio de comunicación (top 8 medios por frecuencia total).",
+    en = "Time evolution of the searched term by media outlet (top 8 outlets by total frequency)."
+  ),
+  "media.tab.top_terms.chart1.title" = list(es = "Los temas favoritos de cada medio", en = "Each outlet's favorite topics"),
+  "media.tab.top_terms.chart1.hint" = list(es = "Los términos que más aparecen en los titulares del medio seleccionado.", en = "The terms that appear most in the selected outlet's headlines."),
+  "media.tab.top_terms.chart2.title" = list(es = "¿Cuándo fueron más mencionados estos temas?", en = "When were these topics mentioned most?"),
+  "media.tab.top_terms.chart2.hint" = list(
+    es = "Evolución temporal de los términos más frecuentes del medio seleccionado. Selecciona los términos en el panel izquierdo.",
+    en = "Time evolution of the selected outlet's most frequent terms. Select the terms in the left panel."
+  ),
+  "media.tab.volume.chart1.title" = list(es = "Volumen de noticias por medio", en = "Headline volume by outlet"),
+  "media.tab.volume.chart1.hint.prefix" = list(
+    es = "Top de medios ordenados por volumen total de noticias publicadas en el período seleccionado. ",
+    en = "Top outlets ranked by total volume of headlines published in the selected period. "
+  ),
+  "media.tab.volume.chart1.hint.yellow" = list(es = "Amarillo", en = "Yellow"),
+  "media.tab.volume.chart1.hint.yellow_desc" = list(es = "medio con períodos sin datos (gaps)", en = "outlet with periods without data (gaps)"),
+  "media.tab.volume.chart1.hint.red" = list(es = "Rojo", en = "Red"),
+  "media.tab.volume.chart1.hint.red_desc" = list(
+    es = "medio con problemas de captura — pasa el cursor sobre la barra para ver el detalle.",
+    en = "outlet with capture problems — hover over the bar to see the detail."
+  ),
+  "media.tab.volume.chart2.title" = list(es = "Evolución del volumen en el tiempo", en = "Volume evolution over time"),
+  "media.tab.volume.chart2.hint" = list(
+    es = "Noticias publicadas por mes y medio. Selecciona los medios en el panel izquierdo. Vista anual cuando el rango supera los 2 años.",
+    en = "Headlines published by month and outlet. Select the outlets in the left panel. Yearly view when the range exceeds 2 years."
+  ),
+  "media.tab.network.title" = list(es = "Palabras que aparecen juntas en los titulares", en = "Words that appear together in headlines"),
+  "media.tab.network.hint" = list(
+    es = "Términos que aparecen en el mismo titular con frecuencia. Cuanto más grueso el nodo, más conexiones tiene.",
+    en = "Terms that frequently appear in the same headline. The thicker the node, the more connections it has."
+  ),
+  "media.tab.network.loading" = list(es = "Calculando red de palabras…", en = "Calculating word network…"),
+  "media.chart.metric_label" = list(es = "Noticias con el término en el titular", en = "Headlines with the term in the title"),
+  "media.chart.axis.outlet" = list(es = "Medio", en = "Outlet"),
+  "media.chart.legend.concept" = list(es = "Concepto", en = "Concept"),
+  "media.chart.axis.news_count" = list(es = "Número de noticias", en = "Number of headlines"),
+  "media.chart.hover.news" = list(es = "Noticias: ", en = "Headlines: "),
+  "media.diag.scraper_broken" = list(
+    es = "Scraper roto: el sitio bloquea la captura automática (error 403).",
+    en = "Broken scraper: the site blocks automatic capture (error 403)."
+  ),
+  "media.diag.discontinued" = list(
+    es = "Fuente descontinuada: el sitio cambió su estructura y el scraper fue retirado. Cobertura hasta noviembre 2024.",
+    en = "Discontinued source: the site changed its structure and the scraper was retired. Coverage through November 2024."
+  ),
+  "media.diag.gap" = list(es = "⚠ Gap de datos: sin noticias del %s al %s (%d días).", en = "⚠ Data gap: no headlines from %s to %s (%d days)."),
+  "media.diag.inactive" = list(es = "⛔ Inactivo: sin noticias desde el %s.", en = "⛔ Inactive: no headlines since %s."),
+  "media.selector.no_outlets" = list(es = "No hay medios en el período.", en = "No outlets in this period."),
+  "media.network.no_data" = list(es = "Sin datos para este período o umbral seleccionado.", en = "No data for this period or the selected threshold."),
+  "media.network.missing_igraph" = list(es = "Instalar igraph: install.packages('igraph')", en = "Install igraph: install.packages('igraph')"),
+  "media.network.hover.connections" = list(es = "Conexiones: ", en = "Connections: "),
+  "media.network.legend.group" = list(es = "Grupo", en = "Group"),
+  "media.network.legend.communities" = list(es = "Comunidades", en = "Communities"),
+  "media.network.legend.semantic" = list(es = "Relación semántica", en = "Semantic relationship"),
+  "media.network.slider.semantic_similarity" = list(es = "Similitud semántica mínima", en = "Minimum semantic similarity"),
+  "media.volume_evol.select_outlet" = list(es = "Selecciona al menos un medio arriba.", en = "Select at least one outlet above."),
+  "media.chart.hover.outlet" = list(es = "Medio: ", en = "Outlet: "),
+  "media.chart.hover.month" = list(es = "Mes: ", en = "Month: "),
+  "media.chart.axis.news_published" = list(es = "Noticias publicadas", en = "Headlines published"),
+  "media.chart.axis.month" = list(es = "Mes", en = "Month"),
+  "media.concept_evol.select_hint" = list(
+    es = "Selecciona un término y un medio para ver la evolución temporal.",
+    en = "Select a term and an outlet to see the time evolution."
+  ),
+  "media.concept_evol.no_data_prefix" = list(es = "Sin datos para los términos seleccionados en", en = "No data for the selected terms in"),
+  "media.concept_evol.no_data_suffix" = list(es = "en este período.", en = "in this period."),
+  "media.concept_evol.title_prefix" = list(es = "Evolución en", en = "Evolution in"),
+  "media.terms_by_outlet.no_data" = list(es = "Sin datos para el medio elegido en este período.", en = "No data for the selected outlet in this period."),
+  "media.terms_by_outlet.select_hint" = list(es = "Selecciona al menos un término arriba.", en = "Select at least one term above."),
+  "media.terms_by_outlet.pie_title_prefix" = list(es = "Top 15 términos —", en = "Top 15 terms —"),
+
+  # ── Sidebar de filtros (Tendencias / Medios / Más información) ──────────
+  "sidebar.exclude_words.label" = list(es = "Excluir palabras de los gráficos", en = "Exclude words from charts"),
+  "sidebar.exclude_words.placeholder" = list(es = "Ej: chilena, video, esto", en = "E.g.: chilean, video, this"),
+  "sidebar.exclude_words.apply" = list(es = "Aplicar", en = "Apply"),
+  "sidebar.exclude_words.clear" = list(es = "Limpiar", en = "Clear"),
+  "mas_info.sidebar.hint" = list(es = "Detalles técnicos del proyecto.", en = "Technical details of the project."),
+  "trends.sidebar.search_word_label" = list(es = "Buscar una palabra", en = "Search for a word"),
+  "trends.sidebar.search_placeholder" = list(es = "Ej: presidente, economía…", en = "E.g.: president, economy…"),
+  "media.sidebar.outlet_for_evolution" = list(es = "Medio para evolución temporal", en = "Outlet for time evolution"),
+  "media.sidebar.choose_outlet" = list(es = "Elegir medio", en = "Choose outlet"),
+  "media.sidebar.terms_in_chart" = list(es = "Términos en el gráfico", en = "Terms in the chart"),
+  "media.sidebar.outlets_in_chart" = list(es = "Medios en el gráfico", en = "Outlets in the chart"),
+  "media.sidebar.min_cooccurrence" = list(es = "Co-ocurrencia mínima", en = "Minimum co-occurrence"),
+  "media.sidebar.max_nodes" = list(es = "Máximo de nodos", en = "Maximum nodes")
 )
 
 #' Traduce una clave al idioma indicado (por defecto "es").
