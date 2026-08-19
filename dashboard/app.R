@@ -934,7 +934,7 @@ fluidPage(
     h1(class = "dashboard-title", `data-i18n` = "page.title", i18n_tr("page.title", lang)),
     tags$a(href = "/", class = "btn-volver-escritorio",
       HTML(paste0("\u229e <span data-i18n=\"nav.desktop_link\">", i18n_tr("nav.desktop_link", lang), "</span>"))),
-    div(class = "news-language-switcher", role = "group", `aria-label` = "Idioma",
+    div(class = "news-language-switcher", role = "group", `aria-label` = i18n_tr("language.label", lang),
       tags$button(type = "button", class = "lang-btn", `data-babel-lang` = "es", "ES"),
       tags$button(type = "button", class = "lang-btn", `data-babel-lang` = "en", "EN")
     )
@@ -956,17 +956,17 @@ fluidPage(
           min = as.Date("2018-01-01"),
           max = Sys.Date(),
           format = "yyyy-mm-dd",
-          language = "es",
-          separator = " a "
+          language = if (lang == "en") "en" else "es",
+          separator = i18n_tr("sidebar.date_separator", lang)
         ),
         div(class = "preset-buttons",
-          actionButton("preset_7",  "Últimos 7 días",  class = "btn-sm"),
-          actionButton("preset_30", "Último mes",     class = "btn-sm"),
-          actionButton("preset_365", "Último año", class = "btn-sm")
+          actionButton("preset_7",  i18n_tr("sidebar.preset_7days", lang),  class = "btn-sm"),
+          actionButton("preset_30", i18n_tr("sidebar.preset_month", lang),     class = "btn-sm"),
+          actionButton("preset_365", i18n_tr("sidebar.preset_year", lang), class = "btn-sm")
         ),
         div(style = "margin-top: 14px; padding-top: 12px; border-top: 1px solid #dee2e6;",
           actionButton("btn_abrir_ia",
-                       label = tagList(icon("robot"), " Agente de datos"),
+                       label = tagList(icon("robot"), i18n_tr("sidebar.ai_agent_btn", lang)),
                        class = "btn-ia-sidebar")
         ),
         conditionalPanel(
@@ -2489,7 +2489,7 @@ server <- function(input, output, session) {
           icon("robot")
         ),
         div(
-          tags$strong("Agente de datos", style = "display: block; line-height: 1.2;"),
+          tags$strong(tr("chat.title"), style = "display: block; line-height: 1.2;"),
           tags$span(paste(fecha_i, "\u2013", fecha_f),
                     style = "font-size: 0.8rem; color: #6c757d; font-weight: 400;")
         )
@@ -2498,7 +2498,7 @@ server <- function(input, output, session) {
         uiOutput("chat_mensajes_ui"),
         div(class = "chat-input-area",
           textInput("chat_pregunta", NULL,
-                    placeholder = "Pregunta algo sobre las noticias del per\u00edodo\u2026"),
+                    placeholder = tr("chat.input_placeholder")),
           tags$button(
             id = "btn_chat_enviar", class = "btn chat-send-btn action-button",
             icon("paper-plane")
@@ -2514,7 +2514,7 @@ server <- function(input, output, session) {
           });
         "))
       ),
-      footer = modalButton("Cerrar"),
+      footer = modalButton(tr("chat.close")),
       size = "l",
       easyClose = TRUE
     ))
@@ -2539,8 +2539,9 @@ server <- function(input, output, session) {
     f <- fechas()
     fecha_inicio <- f$start
     fecha_fin    <- f$end
-    # Capturar historial ANTES de onFlushed (fuera del contexto reactivo lo pierde)
+    # Capturar historial e idioma ANTES de onFlushed (fuera del contexto reactivo se pierden)
     hist_snapshot <- chat_historial()
+    chat_lang <- current_lang()
 
     session$onFlushed(once = TRUE, function() {
 
@@ -2612,14 +2613,19 @@ server <- function(input, output, session) {
 
       # ── Paso 3: Sintetizar respuesta ──────────────────────────────────────────
       respuesta <- if (is.null(sql_clean) || is.null(resultado_sql)) {
-        "No pude formular una consulta para esa pregunta. Intenta reformularla con m\u00e1s detalle."
+        i18n_tr("chat.error_no_query", chat_lang)
       } else if (is.list(resultado_sql) && !is.data.frame(resultado_sql) && !is.null(resultado_sql$error)) {
-        paste0("Error al consultar la base de datos: ", resultado_sql$error)
+        paste0(i18n_tr("chat.error_db_prefix", chat_lang), resultado_sql$error)
       } else if (is.data.frame(resultado_sql) && nrow(resultado_sql) == 0L) {
-        "La consulta no devuelve resultados para ese per\u00edodo o t\u00e9rmino."
+        i18n_tr("chat.error_no_results", chat_lang)
       } else {
         data_txt <- paste(capture.output(print(resultado_sql, row.names = FALSE)), collapse = "\n")
-        synth_sys <- paste(
+        synth_sys <- if (chat_lang == "en") paste(
+          "You are a Chilean press analyst. Answer the question in English,",
+          "directly and concisely (2-4 sentences). Base your answer exclusively",
+          "on the provided data. Mention concrete figures when available.",
+          "Do not explain the SQL or mention database tables."
+        ) else paste(
           "Eres un analista de prensa chilena. Responde la pregunta en espa\u00f1ol,",
           "de forma directa y concisa (2-4 oraciones). Basa la respuesta exclusivamente",
           "en los datos proporcionados. Menciona cifras concretas cuando estén disponibles.",
@@ -2641,7 +2647,7 @@ server <- function(input, output, session) {
             httr2::req_timeout(60) |>
             httr2::req_perform()
           httr2::resp_body_json(resp2)$message$content
-        }, error = function(e) paste0("Error al conectar con Ollama: ", conditionMessage(e)))
+        }, error = function(e) paste0(i18n_tr("chat.error_ollama_prefix", chat_lang), conditionMessage(e)))
       }
 
       hist2 <- isolate(chat_historial())
@@ -2659,14 +2665,14 @@ server <- function(input, output, session) {
     # Estado inicial: chips de sugerencia
     if (length(hist) == 0L && !procesando) {
       sugerencias <- c(
-        "\u00bfCu\u00e1les son los t\u00e9rminos m\u00e1s frecuentes del per\u00edodo?",
-        "\u00bfQu\u00e9 medio public\u00f3 m\u00e1s noticias?",
-        "\u00bfCu\u00e1ntas noticias hay en total?",
-        "\u00bfCu\u00e1l fue el t\u00e9rmino m\u00e1s mencionado cada mes?"
+        tr("chat.suggestion.top_terms"),
+        tr("chat.suggestion.top_outlet"),
+        tr("chat.suggestion.total_count"),
+        tr("chat.suggestion.term_by_month")
       )
       return(div(class = "chat-messages", style = "justify-content: center;",
         tags$p(class = "chat-welcome",
-               "Puedes preguntarme sobre las noticias del per\u00edodo seleccionado:"),
+               tr("chat.welcome")),
         div(class = "chat-chips",
           lapply(sugerencias, function(q) {
             tags$button(class = "chip-btn",
@@ -2692,7 +2698,7 @@ server <- function(input, output, session) {
             div(class = "chat-bubble", m$content),
             if (!is.null(m$sql) && nzchar(m$sql))
               tags$details(
-                tags$summary(class = "chat-sql-toggle", "Ver SQL generado"),
+                tags$summary(class = "chat-sql-toggle", tr("chat.view_sql")),
                 div(class = "chat-sql-code", m$sql)
               )
             else NULL
@@ -2737,7 +2743,7 @@ server <- function(input, output, session) {
     if (length(selected) == 0) selected <- head(disponibles, min(2L, length(disponibles)))
     div(class = "term-chips-box",
       tags$label(class = "control-label", style = "display: block; margin-bottom: 6px;",
-        "Términos para el gráfico por medio"
+        tr("media.sidebar.terms_for_chart")
       ),
       checkboxGroupInput(
         "terminos_medios",
