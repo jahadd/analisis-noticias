@@ -227,7 +227,62 @@ i18n_strings <- list(
   "sent.meta.coverage" = list(
     es = "Cobertura: <b>%s de %s</b> titulares clasificados (<b>%s%%</b>) · modelo <b>%s</b> · confianza media <b>%s</b>. El tono se clasifica con un modelo de lenguaje local sobre el titular.",
     en = "Coverage: <b>%s of %s</b> headlines classified (<b>%s%%</b>) · model <b>%s</b> · average confidence <b>%s</b>. Tone is classified using a local language model on the headline."
-  )
+  ),
+
+  # ── Pestaña Más información ──────────────────────────────────────────────
+  "info.corpus.text" = list(es = "más de %s millones de noticias recopiladas desde %s", en = "over %s million headlines collected since %s"),
+  "info.corpus.fallback" = list(es = "más de 1,2 millones de noticias", en = "over 1.2 million headlines"),
+  "info.title.main" = list(es = "MONITOR DE NOTICIAS CHILE  —  Seguimiento de titulares 2018-2026", en = "CHILE NEWS MONITOR  —  Tracking headlines 2018-2026"),
+  "info.subtitle" = list(es = "Un vistazo en tiempo real a los temas que dominan la prensa chilena.", en = "A real-time look at the topics dominating the Chilean press."),
+  "info.badge.years" = list(es = "2018 — 2026", en = "2018 — 2026"),
+  "info.badge.media_count" = list(es = "28 MEDIOS", en = "28 OUTLETS"),
+  "info.badge.online" = list(es = "EN LINEA", en = "ONLINE"),
+  "info.credits.title" = list(es = "!!  CREDITOS  !!", en = "!!  CREDITS  !!"),
+  "info.credits.data_label" = list(es = "Datos y scraping: ", en = "Data and scraping: "),
+  "info.credits.data_suffix" = list(es = " de Bastian Olea Herrera. Base de datos con %s.", en = " by Bastian Olea Herrera. Database with %s."),
+  "info.credits.pipeline_label" = list(es = "Pipeline, análisis y dashboard: ", en = "Pipeline, analysis and dashboard: "),
+  "info.credits.pipeline_suffix" = list(
+    es = ". Tokenización, frecuencias, co-ocurrencias, sentimiento y visualización interactiva.",
+    en = ". Tokenization, frequencies, co-occurrences, sentiment and interactive visualization."
+  ),
+  "info.what_is.title" = list(es = "¿Qué es esto?", en = "What is this?"),
+  "info.what_is.p1" = list(es = "Este dashboard rastrea qué palabras y temas aparecen en los titulares de los principales medios chilenos.", en = "This dashboard tracks which words and topics appear in the headlines of major Chilean media outlets."),
+  "info.what_is.p2" = list(
+    es = "Permite ver cuándo un tema se volvió tendencia, cómo distintos medios cubren los mismos eventos y qué conceptos aparecen juntos con más frecuencia.",
+    en = "It lets you see when a topic became trending, how different outlets cover the same events, and which concepts appear together most often."
+  ),
+  "info.what_is.p3" = list(es = "Los datos se recopilan automáticamente y se procesan para explorar sin leer miles de artículos.", en = "The data is collected automatically and processed so you can explore it without reading thousands of articles."),
+  "info.what_can.title" = list(es = "¿Qué puedo hacer aquí?", en = "What can I do here?"),
+  "info.feat.trends.title" = list(es = "Ver tendencias", en = "See trends"),
+  "info.feat.trends.desc" = list(es = "Palabras más mencionadas y cómo cambiaron en el tiempo.", en = "Most mentioned words and how they changed over time."),
+  "info.feat.compare.title" = list(es = "Comparar medios", en = "Compare outlets"),
+  "info.feat.compare.desc" = list(es = "Si distintos medios priorizan los mismos temas.", en = "Whether different outlets prioritize the same topics."),
+  "info.feat.search.title" = list(es = "Buscar conceptos", en = "Search concepts"),
+  "info.feat.search.desc" = list(es = "Cuántas veces apareció una palabra, en qué período y medios.", en = "How many times a word appeared, in what period and outlets."),
+  "info.feat.explore.title" = list(es = "Explorar conexiones", en = "Explore connections"),
+  "info.feat.explore.desc" = list(es = "Términos que aparecen juntos en titulares.", en = "Terms that appear together in headlines."),
+  "info.feat.volume.title" = list(es = "Seguir el volumen", en = "Track volume"),
+  "info.feat.volume.desc" = list(es = "Cuántas noticias publica cada medio y cómo ha evolucionado.", en = "How many headlines each outlet publishes and how it has evolved."),
+  "info.sources.title" = list(es = "Fuentes cubiertas — 28 medios chilenos", en = "Sources covered — 28 Chilean outlets"),
+  "info.sources.tv" = list(es = "TELEVISION", en = "TELEVISION"),
+  "info.sources.radio" = list(es = "RADIO", en = "RADIO"),
+  "info.sources.print" = list(es = "PRENSA ESCRITA", en = "PRINT PRESS"),
+  "info.sources.digital" = list(es = "MEDIOS DIGITALES", en = "DIGITAL MEDIA"),
+  "info.how.title" = list(es = "¿Cómo funciona?", en = "How does it work?"),
+  "info.how.step1.title" = list(es = "Recolección", en = "Collection"),
+  "info.how.step1.desc" = list(es = "Un sistema visita periódicamente los 28 medios y guarda sus titulares.", en = "A system periodically visits the 28 outlets and saves their headlines."),
+  "info.how.step2.title" = list(es = "Identificación", en = "Identification"),
+  "info.how.step2.desc" = list(
+    es = "Cada titular se descompone en palabras clave. Se fusionan nombres de personas, instituciones y partidos.",
+    en = "Each headline is broken down into keywords. Names of people, institutions and parties are merged."
+  ),
+  "info.how.step3.title" = list(es = "Análisis", en = "Analysis"),
+  "info.how.step3.desc" = list(es = "Se cuenta cuántas veces aparece cada término por día y por medio para detectar tendencias.", en = "Counts how many times each term appears per day and per outlet to detect trends."),
+  "info.how.step4.title" = list(es = "Visualización", en = "Visualization"),
+  "info.how.step4.desc" = list(es = "Resultados presentados en este dashboard interactivo. Filtra, busca y explora libremente.", en = "Results presented in this interactive dashboard. Filter, search and explore freely."),
+  "info.footer.data" = list(es = "Datos: prensa_chile", en = "Data: prensa_chile"),
+  "info.footer.pipeline" = list(es = "Pipeline: analisis-noticias", en = "Pipeline: analisis-noticias"),
+  "info.footer.license" = list(es = "Licencia MIT · Datos sujetos a TOS de cada medio.", en = "MIT License · Data subject to each outlet's TOS.")
 )
 
 #' Traduce una clave al idioma indicado (por defecto "es").

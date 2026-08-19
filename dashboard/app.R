@@ -1928,9 +1928,8 @@ server <- function(input, output, session) {
     corpus_txt <- tryCatch({
       r <- DBI::dbGetQuery(get_pool(),
         "SELECT COUNT(*)::float8 AS n, EXTRACT(YEAR FROM MIN(fecha))::int AS y FROM noticias")
-      paste0("m\u00e1s de ", format(floor(r$n / 1e5) / 10, decimal.mark = ","),
-             " millones de noticias recopiladas desde ", r$y)
-    }, error = function(e) "m\u00e1s de 1,2 millones de noticias")
+      sprintf(tr("info.corpus.text"), format(floor(r$n / 1e5) / 10, decimal.mark = ","), r$y)
+    }, error = function(e) tr("info.corpus.fallback"))
     repo_prensa   <- "https://github.com/bastianolea/prensa_chile"
     repo_analisis <- "https://github.com/jahadd/analisis-noticias"
 
@@ -1966,75 +1965,75 @@ server <- function(input, output, session) {
     tags$div(class = "mi-w95",
 
       # ── Barra de título principal ──────────────────────────────────────────
-      win("\U0001f4f0  MONITOR DE NOTICIAS CHILE  —  Seguimiento de titulares 2018-2026", icon = "",
+      win(paste0("\U0001f4f0  ", tr("info.title.main")), icon = "",
         tags$div(style = "display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;",
           tags$div(
             tags$p(style="font-size:22px; margin:0 0 6px 0;",
-              "Un vistazo en tiempo real a los temas que dominan la prensa chilena."),
+              tr("info.subtitle")),
             tags$div(class = "mi-w95-badges",
-              tags$span(class = "mi-w95-badge", "2018 \u2014 2026"),
-              tags$span(class = "mi-w95-badge", "28 MEDIOS"),
-              tags$span(class = "mi-w95-badge mi-w95-blink", "EN LINEA")
+              tags$span(class = "mi-w95-badge", tr("info.badge.years")),
+              tags$span(class = "mi-w95-badge", tr("info.badge.media_count")),
+              tags$span(class = "mi-w95-badge mi-w95-blink", tr("info.badge.online"))
             )
           )
         )
       ),
 
       # ── CRÉDITOS ────────────────────────────────────────────────────────────
-      win_credit("!!  CREDITOS  !!", icon = "\u2605",
+      win_credit(tr("info.credits.title"), icon = "\u2605",
         tags$p(style="font-size:21px; margin-bottom:8px;",
-          tags$strong("Datos y scraping: "),
+          tags$strong(tr("info.credits.data_label")),
           tags$a(href = repo_prensa, target = "_blank", rel = "noopener",
             "prensa_chile"),
-          paste0(" de Bastian Olea Herrera. Base de datos con ", corpus_txt, ".")
+          sprintf(tr("info.credits.data_suffix"), corpus_txt)
         ),
         tags$p(style="font-size:21px; margin:0;",
-          tags$strong("Pipeline, análisis y dashboard: "),
+          tags$strong(tr("info.credits.pipeline_label")),
           tags$a(href = repo_analisis, target = "_blank", rel = "noopener",
             "analisis-noticias"),
-          ". Tokenización, frecuencias, co-ocurrencias, sentimiento y visualización interactiva."
+          tr("info.credits.pipeline_suffix")
         )
       ),
 
       # ── Dos columnas: ¿Qué es? + ¿Qué puedo hacer? ─────────────────────────
       tags$div(class = "mi-w95-grid",
 
-        win("¿Qué es esto?", icon = "\u2139",
-          tags$p("Este dashboard rastrea qué palabras y temas aparecen en los titulares de los principales medios chilenos."),
-          tags$p("Permite ver cuándo un tema se volvió tendencia, cómo distintos medios cubren los mismos eventos y qué conceptos aparecen juntos con más frecuencia."),
-          tags$p("Los datos se recopilan automáticamente y se procesan para explorar sin leer miles de artículos.")
+        win(tr("info.what_is.title"), icon = "\u2139",
+          tags$p(tr("info.what_is.p1")),
+          tags$p(tr("info.what_is.p2")),
+          tags$p(tr("info.what_is.p3"))
         ),
 
-        win("¿Qué puedo hacer aquí?", icon = "\u2756",
-          feat("Ver tendencias", "Palabras más mencionadas y cómo cambiaron en el tiempo."),
-          feat("Comparar medios", "Si distintos medios priorizan los mismos temas."),
-          feat("Buscar conceptos", "Cuántas veces apareció una palabra, en qué período y medios."),
-          feat("Explorar conexiones", "Términos que aparecen juntos en titulares."),
-          feat("Seguir el volumen", "Cuántas noticias publica cada medio y cómo ha evolucionado.")
+        win(tr("info.what_can.title"), icon = "\u2756",
+          feat(tr("info.feat.trends.title"), tr("info.feat.trends.desc")),
+          feat(tr("info.feat.compare.title"), tr("info.feat.compare.desc")),
+          feat(tr("info.feat.search.title"), tr("info.feat.search.desc")),
+          feat(tr("info.feat.explore.title"), tr("info.feat.explore.desc")),
+          feat(tr("info.feat.volume.title"), tr("info.feat.volume.desc"))
         )
       ),
 
       # ── Fuentes cubiertas (ancho completo) ──────────────────────────────────
-      win("Fuentes cubiertas — 28 medios chilenos", icon = "\U0001f4f0",
-        tags$div(class = "mi-w95-group-label", "\u25ba  TELEVISION"),
+      win(tr("info.sources.title"), icon = "\U0001f4f0",
+        tags$div(class = "mi-w95-group-label", paste0("\u25ba  ", tr("info.sources.tv"))),
         tags$div(class = "mi-w95-chips",
           chip("24horas", "mi-w95-chip-tv"), chip("CHV Noticias", "mi-w95-chip-tv"),
           chip("CNN Chile", "mi-w95-chip-tv"), chip("Meganoticias", "mi-w95-chip-tv"),
           chip("T13", "mi-w95-chip-tv")
         ),
-        tags$div(class = "mi-w95-group-label", "\u25ba  RADIO"),
+        tags$div(class = "mi-w95-group-label", paste0("\u25ba  ", tr("info.sources.radio"))),
         tags$div(class = "mi-w95-chips",
           chip("ADN Radio", "mi-w95-chip-radio"), chip("Agricultura", "mi-w95-chip-radio"),
           chip("Cooperativa", "mi-w95-chip-radio"), chip("Radio Uchile", "mi-w95-chip-radio")
         ),
-        tags$div(class = "mi-w95-group-label", "\u25ba  PRENSA ESCRITA"),
+        tags$div(class = "mi-w95-group-label", paste0("\u25ba  ", tr("info.sources.print"))),
         tags$div(class = "mi-w95-chips",
           chip("Diario Financiero", "mi-w95-chip-print"), chip("El Siglo", "mi-w95-chip-print"),
           chip("Emol", "mi-w95-chip-print"), chip("La Cuarta", "mi-w95-chip-print"),
           chip("La Nación", "mi-w95-chip-print"), chip("La Tercera", "mi-w95-chip-print"),
           chip("Publimetro", "mi-w95-chip-print")
         ),
-        tags$div(class = "mi-w95-group-label", "\u25ba  MEDIOS DIGITALES"),
+        tags$div(class = "mi-w95-group-label", paste0("\u25ba  ", tr("info.sources.digital"))),
         tags$div(class = "mi-w95-chips",
           chip("Bío Bío", "mi-w95-chip-dig"), chip("CIPER", "mi-w95-chip-dig"),
           chip("El Ciudadano", "mi-w95-chip-dig"), chip("El Desconcierto", "mi-w95-chip-dig"),
@@ -2046,25 +2045,25 @@ server <- function(input, output, session) {
       ),
 
       # ── Cómo funciona (ancho completo) ──────────────────────────────────────
-      win("¿Cómo funciona?", icon = "\u2699",
+      win(tr("info.how.title"), icon = "\u2699",
         tags$div(class = "mi-w95-grid",
           tags$div(
-            step("1", "Recolección", "Un sistema visita periódicamente los 28 medios y guarda sus titulares."),
-            step("2", "Identificación", "Cada titular se descompone en palabras clave. Se fusionan nombres de personas, instituciones y partidos.")
+            step("1", tr("info.how.step1.title"), tr("info.how.step1.desc")),
+            step("2", tr("info.how.step2.title"), tr("info.how.step2.desc"))
           ),
           tags$div(
-            step("3", "Análisis", "Se cuenta cuántas veces aparece cada término por día y por medio para detectar tendencias."),
-            step("4", "Visualización", "Resultados presentados en este dashboard interactivo. Filtra, busca y explora libremente.")
+            step("3", tr("info.how.step3.title"), tr("info.how.step3.desc")),
+            step("4", tr("info.how.step4.title"), tr("info.how.step4.desc"))
           )
         )
       ),
 
       # ── Barra de estado footer ───────────────────────────────────────────────
       tags$div(class = "mi-w95-statusbar",
-        tags$a(href = repo_prensa,   target = "_blank", rel = "noopener", "Datos: prensa_chile"),
+        tags$a(href = repo_prensa,   target = "_blank", rel = "noopener", tr("info.footer.data")),
         tags$span("|"),
-        tags$a(href = repo_analisis, target = "_blank", rel = "noopener", "Pipeline: analisis-noticias"),
-        tags$span("Licencia MIT \u00b7 Datos sujetos a TOS de cada medio.")
+        tags$a(href = repo_analisis, target = "_blank", rel = "noopener", tr("info.footer.pipeline")),
+        tags$span(tr("info.footer.license"))
       )
     )
   })
