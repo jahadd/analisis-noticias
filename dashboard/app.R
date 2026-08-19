@@ -972,14 +972,14 @@ fluidPage(
         conditionalPanel(
           condition = "!(input.tabs === 'medios' && input.tabs_medios === 'volumen_datos')",
           div(class = "sidebar-seccion", style = "margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #dee2e6;",
-            tags$label(class = "control-label", "Excluir palabras de los gráficos"),
+            tags$label(class = "control-label", i18n_tr("sidebar.exclude_words.label", lang)),
             tags$div(class = "form-group",
               tags$input(id = "palabras_excluir", type = "text", class = "form-control",
-                placeholder = "Ej: chilena, video, esto", autocomplete = "off", style = "width: 100%;")
+                placeholder = i18n_tr("sidebar.exclude_words.placeholder", lang), autocomplete = "off", style = "width: 100%;")
             ),
             div(style = "margin-top: 6px; display: flex; gap: 6px;",
-              actionButton("btn_excluir_aplicar", "Aplicar", class = "btn-sm btn-outline-secondary"),
-              actionButton("btn_excluir_limpiar", "Limpiar", class = "btn-sm btn-outline-secondary")
+              actionButton("btn_excluir_aplicar", i18n_tr("sidebar.exclude_words.apply", lang), class = "btn-sm btn-outline-secondary"),
+              actionButton("btn_excluir_limpiar", i18n_tr("sidebar.exclude_words.clear", lang), class = "btn-sm btn-outline-secondary")
             ),
             uiOutput("palabras_excluidas_chips")
           )
@@ -990,7 +990,7 @@ fluidPage(
         conditionalPanel(
           condition = "input.tabs === 'mas_info'",
           div(class = "sidebar-seccion sidebar-insights",
-            tags$p(style = "font-size:0.85em; color:#6c757d; padding: 4px 8px;", "Detalles técnicos del proyecto.")
+            tags$p(style = "font-size:0.85em; color:#6c757d; padding: 4px 8px;", i18n_tr("mas_info.sidebar.hint", lang))
           )
         ),
         conditionalPanel(
@@ -998,14 +998,14 @@ fluidPage(
         div(class = "sidebar-seccion sidebar-terminos",
           uiOutput("selector_terminos_evol"),
           div(class = "busqueda-termino",
-            tags$label(class = "control-label", "Buscar una palabra"),
+            tags$label(class = "control-label", i18n_tr("trends.sidebar.search_word_label", lang)),
             tags$div(
             class = "form-group",
             tags$input(
               id = "busqueda_termino",
               type = "text",
               class = "form-control",
-              placeholder = "Ej: presidente, economía…",
+              placeholder = i18n_tr("trends.sidebar.search_placeholder", lang),
               autocomplete = "off",
               style = "width: 100%;"
             )
@@ -1019,14 +1019,14 @@ fluidPage(
           div(class = "sidebar-seccion sidebar-terminos",
             uiOutput("selector_terminos_medios"),
             div(class = "busqueda-termino",
-              tags$label(class = "control-label", "Buscar una palabra"),
+              tags$label(class = "control-label", i18n_tr("trends.sidebar.search_word_label", lang)),
               tags$div(
                 class = "form-group",
                 tags$input(
                   id = "busqueda_termino_medios",
                   type = "text",
                   class = "form-control",
-                  placeholder = "Ej: presidente, economía…",
+                  placeholder = i18n_tr("trends.sidebar.search_placeholder", lang),
                   autocomplete = "off",
                   style = "width: 100%;"
                 )
@@ -1034,7 +1034,7 @@ fluidPage(
               uiOutput("frecuencia_termino_medios")
             ),
             div(class = "sidebar-seccion", style = "margin-top: 20rem; padding-top: 1rem; border-top: 1px solid #dee2e6;",
-              tags$label(class = "control-label", "Medio para evolución temporal"),
+              tags$label(class = "control-label", i18n_tr("media.sidebar.outlet_for_evolution", lang)),
               selectInput("medio_evolucion_concepto", label = NULL, choices = character(0), selected = NULL)
             )
           )
@@ -1042,10 +1042,10 @@ fluidPage(
         conditionalPanel(
           condition = "input.tabs === 'medios' && input.tabs_medios === 'terminos_destacados'",
           div(class = "sidebar-medio-destacados",
-            tags$label(class = "control-label", style = "display: block; margin-bottom: 6px; font-weight: 600;", "Elegir medio"),
+            tags$label(class = "control-label", style = "display: block; margin-bottom: 6px; font-weight: 600;", i18n_tr("media.sidebar.choose_outlet", lang)),
             uiOutput("selector_medio_terminos"),
             div(style = "margin-top: 27rem; padding-top: 1rem; border-top: 1px solid #dee2e6;",
-              tags$label(class = "control-label", style = "display: block; margin-bottom: 6px; font-weight: 600;", "Términos en el gráfico"),
+              tags$label(class = "control-label", style = "display: block; margin-bottom: 6px; font-weight: 600;", i18n_tr("media.sidebar.terms_in_chart", lang)),
               uiOutput("selector_evol_terminos_medio")
             )
           )
@@ -1054,7 +1054,7 @@ fluidPage(
           condition = "input.tabs === 'medios' && input.tabs_medios === 'volumen_datos'",
           div(class = "sidebar-medio-destacados",
             div(style = "margin-top: 65rem; padding-top: 1rem; border-top: 1px solid #dee2e6;",
-              tags$label(class = "control-label", style = "display: block; margin-bottom: 6px; font-weight: 600;", "Medios en el gráfico"),
+              tags$label(class = "control-label", style = "display: block; margin-bottom: 6px; font-weight: 600;", i18n_tr("media.sidebar.outlets_in_chart", lang)),
               uiOutput("selector_medios_evol_volumen")
             )
           )
@@ -1063,11 +1063,11 @@ fluidPage(
           condition = "input.tabs === 'medios' && input.tabs_medios === 'red_palabras'",
           div(class = "sidebar-seccion",
             div(class = "form-group",
-              tags$label(class = "control-label", "Medio"),
+              tags$label(class = "control-label", i18n_tr("media.chart.axis.outlet", lang)),
               selectInput("fuente_red", label = NULL, choices = character(0), selected = NULL)
             ),
-            sliderInput("umbral_coocurrencia", "Co-ocurrencia mínima", min = 2L, max = 50L, value = 5L, step = 1L),
-            sliderInput("max_nodos_red", "Máximo de nodos", min = 10L, max = 150L, value = 50L, step = 10L),
+            sliderInput("umbral_coocurrencia", i18n_tr("media.sidebar.min_cooccurrence", lang), min = 2L, max = 50L, value = 5L, step = 1L),
+            sliderInput("max_nodos_red", i18n_tr("media.sidebar.max_nodes", lang), min = 10L, max = 150L, value = 50L, step = 10L),
             uiOutput("slider_semantico_red_ui")
           )
         )
@@ -1086,16 +1086,16 @@ fluidPage(
           ),
           tags$p(class = "small-metric", uiOutput("texto_volumen")),
           div(class = "chart-card",
-            h4("¿Cómo han cambiado los temas con el tiempo?"),
-            tags$p(class = "small-metric", "Selecciona palabras en el panel izquierdo para ver cómo evolucionó su presencia en los titulares."),
+            h4(i18n_tr("trends.evolution.title", lang)),
+            tags$p(class = "small-metric", i18n_tr("trends.evolution.hint", lang)),
             plotlyOutput("grafico_evolucion", height = "380px")
           ),
           div(class = "chart-card",
-            h4("Las 30 palabras más mencionadas en el período"),
+            h4(i18n_tr("trends.top_terms.title", lang)),
             plotlyOutput("grafico_top_terminos", height = "520px")
           ),
           div(class = "seccion-ultimas-noticias",
-            h4("Noticias recientes"),
+            h4(i18n_tr("trends.recent_news.title", lang)),
             div(style = "display: flex; gap: 8px; align-items: flex-end; margin-bottom: 0.5rem;",
               div(class = "busqueda-noticias", style = "flex: 2; min-width: 0;",
                 textInput("busqueda_titulo", label = NULL, placeholder = i18n_tr("search.placeholder_titles", lang), width = "100%")
@@ -1116,56 +1116,56 @@ fluidPage(
             tabPanel(
               i18n_tr("tab.conceptos_por_medio", lang), value = "conceptos_por_medio",
               div(class = "chart-card",
-                h4("¿Qué palabras usa cada medio?"),
-                tags$p(class = "small-metric", "Cuántas noticias de cada medio mencionan el término buscado en el titular, dentro del período seleccionado."),
+                h4(i18n_tr("media.tab.concepts.chart1.title", lang)),
+                tags$p(class = "small-metric", i18n_tr("media.tab.concepts.chart1.hint", lang)),
                 plotlyOutput("grafico_conceptos_por_medio", height = "600px")
               ),
               div(class = "chart-card",
-                h4("¿Cómo evolucionó este concepto en cada medio?"),
-                tags$p(class = "small-metric", "Evolución temporal del término buscado por medio de comunicación (top 8 medios por frecuencia total)."),
+                h4(i18n_tr("media.tab.concepts.chart2.title", lang)),
+                tags$p(class = "small-metric", i18n_tr("media.tab.concepts.chart2.hint", lang)),
                 plotlyOutput("grafico_evolucion_concepto_por_medio", height = "420px")
               )
             ),
             tabPanel(
               i18n_tr("tab.terminos_destacados", lang), value = "terminos_destacados",
               div(class = "chart-card",
-                h4("Los temas favoritos de cada medio"),
-                tags$p(class = "small-metric", "Los términos que más aparecen en los titulares del medio seleccionado."),
+                h4(i18n_tr("media.tab.top_terms.chart1.title", lang)),
+                tags$p(class = "small-metric", i18n_tr("media.tab.top_terms.chart1.hint", lang)),
                 plotlyOutput("grafico_terminos_por_medio", height = "500px")
               ),
               div(class = "chart-card",
-                h4("¿Cuándo fueron más mencionados estos temas?"),
-                tags$p(class = "small-metric", "Evolución temporal de los términos más frecuentes del medio seleccionado. Selecciona los términos en el panel izquierdo."),
+                h4(i18n_tr("media.tab.top_terms.chart2.title", lang)),
+                tags$p(class = "small-metric", i18n_tr("media.tab.top_terms.chart2.hint", lang)),
                 plotlyOutput("grafico_evolucion_terminos_por_medio", height = "380px")
               )
             ),
             tabPanel(
               i18n_tr("tab.volumen_datos", lang), value = "volumen_datos",
               div(class = "chart-card",
-                h4("Volumen de noticias por medio"),
+                h4(i18n_tr("media.tab.volume.chart1.title", lang)),
                 tags$p(class = "small-metric", HTML(paste0(
-                  "Top de medios ordenados por volumen total de noticias publicadas en el período seleccionado. ",
-                  "<span style='color:#f59e0b; font-weight:700;'>&#9632; Amarillo</span>: medio con períodos sin datos (gaps) · ",
-                  "<span style='color:#dc2626; font-weight:700;'>&#9632; Rojo</span>: medio con problemas de captura — pasa el cursor sobre la barra para ver el detalle."))),
+                  i18n_tr("media.tab.volume.chart1.hint.prefix", lang),
+                  "<span style='color:#f59e0b; font-weight:700;'>&#9632; ", i18n_tr("media.tab.volume.chart1.hint.yellow", lang), "</span>: ", i18n_tr("media.tab.volume.chart1.hint.yellow_desc", lang), " · ",
+                  "<span style='color:#dc2626; font-weight:700;'>&#9632; ", i18n_tr("media.tab.volume.chart1.hint.red", lang), "</span>: ", i18n_tr("media.tab.volume.chart1.hint.red_desc", lang)))),
                 plotlyOutput("grafico_por_medio", height = "700px")
               ),
               div(class = "chart-card",
-                h4("Evolución del volumen en el tiempo"),
-                tags$p(class = "small-metric", "Noticias publicadas por mes y medio. Selecciona los medios en el panel izquierdo. Vista anual cuando el rango supera los 2 años."),
+                h4(i18n_tr("media.tab.volume.chart2.title", lang)),
+                tags$p(class = "small-metric", i18n_tr("media.tab.volume.chart2.hint", lang)),
                 plotlyOutput("grafico_evolucion_volumen_por_medio", height = "420px")
               )
             ),
             tabPanel(
               i18n_tr("tab.red_palabras", lang), value = "red_palabras",
               div(class = "chart-card red-spinner-wrap",
-                h4("Palabras que aparecen juntas en los titulares"),
-                tags$p(class = "small-metric", "Términos que aparecen en el mismo titular con frecuencia. Cuanto más grueso el nodo, más conexiones tiene."),
+                h4(i18n_tr("media.tab.network.title", lang)),
+                tags$p(class = "small-metric", i18n_tr("media.tab.network.hint", lang)),
                 plotlyOutput("red_coocurrencia_plotly", width = "100%", height = "640px"),
                 div(id = "red-loading-overlay", class = "red-loading-overlay visible",
                   div(class = "ia-modal-dots",
                     tags$span(), tags$span(), tags$span()
                   ),
-                  tags$p(class = "ia-modal-loading-msg", "Calculando red de palabras\u2026")
+                  tags$p(class = "ia-modal-loading-msg", i18n_tr("media.tab.network.loading", lang))
                 )
               )
             ),
@@ -1180,11 +1180,11 @@ fluidPage(
             uiOutput("sent_hero_net"),
             div(class = "chart-card sent-distrib-card",
               div(class = "sent-card-head",
-                h4("Distribución del tono"),
+                h4(i18n_tr("sent.distribution.title", lang)),
                 div(class = "sent-medio busqueda-noticias",
-                  tags$span(class = "lbl", "Medio"),
+                  tags$span(class = "lbl", i18n_tr("media.chart.axis.outlet", lang)),
                   selectInput("sent_filtro_medio", label = NULL,
-                    choices = c("Todos los medios" = "todos"), selected = "todos", width = "220px"))
+                    choices = setNames("todos", i18n_tr("sent.distribution.all_media", lang)), selected = "todos", width = "220px"))
               ),
               uiOutput("sent_barra_periodo")
             )
@@ -1193,8 +1193,8 @@ fluidPage(
           uiOutput("sent_bento"),
           # TABLA paginada (10 por página)
           div(class = "chart-card",
-            h4("Titulares clasificados"),
-            tags$p(class = "small-metric", "Titulares con su tono y confianza. El filtro de tono se controla con un clic en la barra de distribución de arriba."),
+            h4(i18n_tr("sent.table.title", lang)),
+            tags$p(class = "small-metric", i18n_tr("sent.table.hint", lang)),
             uiOutput("tabla_sent_titulares"),
             div(class = "sent-paginacion", uiOutput("sent_paginacion"))
           ),
@@ -1328,7 +1328,7 @@ server <- function(input, output, session) {
 
   output$slider_semantico_red_ui <- renderUI({
     if (!store_disponible()) return(NULL)
-    sliderInput("umbral_semantico", "Similitud semántica mínima",
+    sliderInput("umbral_semantico", tr("media.network.slider.semantic_similarity"),
                 min = 0.5, max = 0.95, value = 0.80, step = 0.05)
   })
 
@@ -1709,7 +1709,7 @@ server <- function(input, output, session) {
     d <- volumen_por_medio_tiempo()
     if (nrow(d) == 0) {
       return(plot_ly(type = "scatter", mode = "markers") %>%
-        add_annotations(text = "No hay datos para el rango elegido.",
+        add_annotations(text = tr("trends.top_terms_chart.no_data"),
           x = 0.5, y = 0.5, xref = "paper", yref = "paper", showarrow = FALSE,
           font = list(size = 14)) %>%
         layout(xaxis = list(showticklabels = FALSE), yaxis = list(showticklabels = FALSE)) %>%
@@ -1719,7 +1719,7 @@ server <- function(input, output, session) {
     if (!is.null(sel_medios) && length(sel_medios) > 0) d <- d[d$medio %in% sel_medios, ]
     if (nrow(d) == 0) {
       return(plot_ly(type = "scatter", mode = "markers") %>%
-        add_annotations(text = "Selecciona al menos un medio arriba.",
+        add_annotations(text = tr("media.volume_evol.select_outlet"),
           x = 0.5, y = 0.5, xref = "paper", yref = "paper", showarrow = FALSE,
           font = list(size = 13, color = "#6c757d")) %>%
         layout(xaxis = list(showticklabels = FALSE), yaxis = list(showticklabels = FALSE)) %>%
@@ -1742,12 +1742,12 @@ server <- function(input, output, session) {
           fill = "tozeroy",
           fillcolor = paste0(paleta[i], "30"),
           line = list(width = 2, color = paleta[i]),
-          hovertemplate = paste0("Año: %{x}<br>Noticias: %{y:,.0f}<br>Medio: ", medios[i], "<extra></extra>")
+          hovertemplate = paste0(tr("trends.chart.hover.year"), "%{x}<br>", tr("media.chart.hover.news"), "%{y:,.0f}<br>", tr("media.chart.hover.outlet"), medios[i], "<extra></extra>")
         )
       }
       p <- p %>% layout(
-        xaxis = list(title = "Año", tickvals = sort(unique(d$periodo)), zeroline = FALSE, showgrid = TRUE),
-        yaxis = list(title = "Noticias publicadas", zeroline = FALSE, showgrid = TRUE),
+        xaxis = list(title = tr("trends.chart.axis.year"), tickvals = sort(unique(d$periodo)), zeroline = FALSE, showgrid = TRUE),
+        yaxis = list(title = tr("media.chart.axis.news_published"), zeroline = FALSE, showgrid = TRUE),
         legend = list(orientation = "v", x = 0.99, xanchor = "right", y = 0.99, yanchor = "top",
                       bgcolor = "rgba(255,255,255,0.85)", bordercolor = "#ccc", borderwidth = 1,
                       font = list(size = 10, family = "Arial, sans-serif"), tracegroupgap = 0),
@@ -1774,7 +1774,7 @@ server <- function(input, output, session) {
         tick_fmt <- "%d %b"
       }
       tickvals_ms <- as.numeric(as.POSIXct(breaks_x, tz = "UTC")) * 1000
-      hover_x <- if (diario) "Fecha: %{x|%d %b %Y}" else "Mes: %{x|%b %Y}"
+      hover_x <- if (diario) paste0(tr("trends.chart.hover.date"), "%{x|%d %b %Y}") else paste0(tr("media.chart.hover.month"), "%{x|%b %Y}")
       for (i in seq_along(medios)) {
         sub <- d %>% filter(medio == medios[i]) %>% arrange(periodo)
         p <- p %>% add_trace(
@@ -1783,15 +1783,15 @@ server <- function(input, output, session) {
           fill = "tozeroy",
           fillcolor = paste0(paleta[i], "30"),
           line = list(width = 2, color = paleta[i]),
-          hovertemplate = paste0(hover_x, "<br>Noticias: %{y:,.0f}<br>Medio: ", medios[i], "<extra></extra>")
+          hovertemplate = paste0(hover_x, "<br>", tr("media.chart.hover.news"), "%{y:,.0f}<br>", tr("media.chart.hover.outlet"), medios[i], "<extra></extra>")
         )
       }
       p <- p %>% layout(
-        xaxis = list(type = "date", title = list(text = if (diario) "Fecha" else "Mes", standoff = 12),
+        xaxis = list(type = "date", title = list(text = if (diario) tr("trends.chart.axis.date") else tr("media.chart.axis.month"), standoff = 12),
           tickmode = "array", tickvals = tickvals_ms, ticktext = format(breaks_x, tick_fmt),
           tickangle = -45, tickfont = list(size = 10),
           zeroline = FALSE, showgrid = TRUE),
-        yaxis = list(title = "Noticias publicadas", zeroline = FALSE, showgrid = TRUE),
+        yaxis = list(title = tr("media.chart.axis.news_published"), zeroline = FALSE, showgrid = TRUE),
         legend = list(orientation = "v", x = 0.99, xanchor = "right", y = 0.99, yanchor = "top",
                       bgcolor = "rgba(255,255,255,0.85)", bordercolor = "#ccc", borderwidth = 1,
                       font = list(size = 10, family = "Arial, sans-serif"), tracegroupgap = 0),
@@ -1799,7 +1799,7 @@ server <- function(input, output, session) {
         plot_bgcolor = "#ffffff", paper_bgcolor = "#ffffff"
       )
     }
-    p %>% config(displayModeBar = TRUE, locale = "es")
+    p %>% config(displayModeBar = TRUE, locale = current_lang())
   })
 
   # Distribución por medio (pestaña Medios; columna fuente = medio, desde 2018)
@@ -1928,9 +1928,8 @@ server <- function(input, output, session) {
     corpus_txt <- tryCatch({
       r <- DBI::dbGetQuery(get_pool(),
         "SELECT COUNT(*)::float8 AS n, EXTRACT(YEAR FROM MIN(fecha))::int AS y FROM noticias")
-      paste0("m\u00e1s de ", format(floor(r$n / 1e5) / 10, decimal.mark = ","),
-             " millones de noticias recopiladas desde ", r$y)
-    }, error = function(e) "m\u00e1s de 1,2 millones de noticias")
+      sprintf(tr("info.corpus.text"), format(floor(r$n / 1e5) / 10, decimal.mark = ","), r$y)
+    }, error = function(e) tr("info.corpus.fallback"))
     repo_prensa   <- "https://github.com/bastianolea/prensa_chile"
     repo_analisis <- "https://github.com/jahadd/analisis-noticias"
 
@@ -1966,75 +1965,75 @@ server <- function(input, output, session) {
     tags$div(class = "mi-w95",
 
       # ── Barra de título principal ──────────────────────────────────────────
-      win("\U0001f4f0  MONITOR DE NOTICIAS CHILE  —  Seguimiento de titulares 2018-2026", icon = "",
+      win(paste0("\U0001f4f0  ", tr("info.title.main")), icon = "",
         tags$div(style = "display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;",
           tags$div(
             tags$p(style="font-size:22px; margin:0 0 6px 0;",
-              "Un vistazo en tiempo real a los temas que dominan la prensa chilena."),
+              tr("info.subtitle")),
             tags$div(class = "mi-w95-badges",
-              tags$span(class = "mi-w95-badge", "2018 \u2014 2026"),
-              tags$span(class = "mi-w95-badge", "28 MEDIOS"),
-              tags$span(class = "mi-w95-badge mi-w95-blink", "EN LINEA")
+              tags$span(class = "mi-w95-badge", tr("info.badge.years")),
+              tags$span(class = "mi-w95-badge", tr("info.badge.media_count")),
+              tags$span(class = "mi-w95-badge mi-w95-blink", tr("info.badge.online"))
             )
           )
         )
       ),
 
       # ── CRÉDITOS ────────────────────────────────────────────────────────────
-      win_credit("!!  CREDITOS  !!", icon = "\u2605",
+      win_credit(tr("info.credits.title"), icon = "\u2605",
         tags$p(style="font-size:21px; margin-bottom:8px;",
-          tags$strong("Datos y scraping: "),
+          tags$strong(tr("info.credits.data_label")),
           tags$a(href = repo_prensa, target = "_blank", rel = "noopener",
             "prensa_chile"),
-          paste0(" de Bastian Olea Herrera. Base de datos con ", corpus_txt, ".")
+          sprintf(tr("info.credits.data_suffix"), corpus_txt)
         ),
         tags$p(style="font-size:21px; margin:0;",
-          tags$strong("Pipeline, análisis y dashboard: "),
+          tags$strong(tr("info.credits.pipeline_label")),
           tags$a(href = repo_analisis, target = "_blank", rel = "noopener",
             "analisis-noticias"),
-          ". Tokenización, frecuencias, co-ocurrencias, sentimiento y visualización interactiva."
+          tr("info.credits.pipeline_suffix")
         )
       ),
 
       # ── Dos columnas: ¿Qué es? + ¿Qué puedo hacer? ─────────────────────────
       tags$div(class = "mi-w95-grid",
 
-        win("¿Qué es esto?", icon = "\u2139",
-          tags$p("Este dashboard rastrea qué palabras y temas aparecen en los titulares de los principales medios chilenos."),
-          tags$p("Permite ver cuándo un tema se volvió tendencia, cómo distintos medios cubren los mismos eventos y qué conceptos aparecen juntos con más frecuencia."),
-          tags$p("Los datos se recopilan automáticamente y se procesan para explorar sin leer miles de artículos.")
+        win(tr("info.what_is.title"), icon = "\u2139",
+          tags$p(tr("info.what_is.p1")),
+          tags$p(tr("info.what_is.p2")),
+          tags$p(tr("info.what_is.p3"))
         ),
 
-        win("¿Qué puedo hacer aquí?", icon = "\u2756",
-          feat("Ver tendencias", "Palabras más mencionadas y cómo cambiaron en el tiempo."),
-          feat("Comparar medios", "Si distintos medios priorizan los mismos temas."),
-          feat("Buscar conceptos", "Cuántas veces apareció una palabra, en qué período y medios."),
-          feat("Explorar conexiones", "Términos que aparecen juntos en titulares."),
-          feat("Seguir el volumen", "Cuántas noticias publica cada medio y cómo ha evolucionado.")
+        win(tr("info.what_can.title"), icon = "\u2756",
+          feat(tr("info.feat.trends.title"), tr("info.feat.trends.desc")),
+          feat(tr("info.feat.compare.title"), tr("info.feat.compare.desc")),
+          feat(tr("info.feat.search.title"), tr("info.feat.search.desc")),
+          feat(tr("info.feat.explore.title"), tr("info.feat.explore.desc")),
+          feat(tr("info.feat.volume.title"), tr("info.feat.volume.desc"))
         )
       ),
 
       # ── Fuentes cubiertas (ancho completo) ──────────────────────────────────
-      win("Fuentes cubiertas — 28 medios chilenos", icon = "\U0001f4f0",
-        tags$div(class = "mi-w95-group-label", "\u25ba  TELEVISION"),
+      win(tr("info.sources.title"), icon = "\U0001f4f0",
+        tags$div(class = "mi-w95-group-label", paste0("\u25ba  ", tr("info.sources.tv"))),
         tags$div(class = "mi-w95-chips",
           chip("24horas", "mi-w95-chip-tv"), chip("CHV Noticias", "mi-w95-chip-tv"),
           chip("CNN Chile", "mi-w95-chip-tv"), chip("Meganoticias", "mi-w95-chip-tv"),
           chip("T13", "mi-w95-chip-tv")
         ),
-        tags$div(class = "mi-w95-group-label", "\u25ba  RADIO"),
+        tags$div(class = "mi-w95-group-label", paste0("\u25ba  ", tr("info.sources.radio"))),
         tags$div(class = "mi-w95-chips",
           chip("ADN Radio", "mi-w95-chip-radio"), chip("Agricultura", "mi-w95-chip-radio"),
           chip("Cooperativa", "mi-w95-chip-radio"), chip("Radio Uchile", "mi-w95-chip-radio")
         ),
-        tags$div(class = "mi-w95-group-label", "\u25ba  PRENSA ESCRITA"),
+        tags$div(class = "mi-w95-group-label", paste0("\u25ba  ", tr("info.sources.print"))),
         tags$div(class = "mi-w95-chips",
           chip("Diario Financiero", "mi-w95-chip-print"), chip("El Siglo", "mi-w95-chip-print"),
           chip("Emol", "mi-w95-chip-print"), chip("La Cuarta", "mi-w95-chip-print"),
           chip("La Nación", "mi-w95-chip-print"), chip("La Tercera", "mi-w95-chip-print"),
           chip("Publimetro", "mi-w95-chip-print")
         ),
-        tags$div(class = "mi-w95-group-label", "\u25ba  MEDIOS DIGITALES"),
+        tags$div(class = "mi-w95-group-label", paste0("\u25ba  ", tr("info.sources.digital"))),
         tags$div(class = "mi-w95-chips",
           chip("Bío Bío", "mi-w95-chip-dig"), chip("CIPER", "mi-w95-chip-dig"),
           chip("El Ciudadano", "mi-w95-chip-dig"), chip("El Desconcierto", "mi-w95-chip-dig"),
@@ -2046,25 +2045,25 @@ server <- function(input, output, session) {
       ),
 
       # ── Cómo funciona (ancho completo) ──────────────────────────────────────
-      win("¿Cómo funciona?", icon = "\u2699",
+      win(tr("info.how.title"), icon = "\u2699",
         tags$div(class = "mi-w95-grid",
           tags$div(
-            step("1", "Recolección", "Un sistema visita periódicamente los 28 medios y guarda sus titulares."),
-            step("2", "Identificación", "Cada titular se descompone en palabras clave. Se fusionan nombres de personas, instituciones y partidos.")
+            step("1", tr("info.how.step1.title"), tr("info.how.step1.desc")),
+            step("2", tr("info.how.step2.title"), tr("info.how.step2.desc"))
           ),
           tags$div(
-            step("3", "Análisis", "Se cuenta cuántas veces aparece cada término por día y por medio para detectar tendencias."),
-            step("4", "Visualización", "Resultados presentados en este dashboard interactivo. Filtra, busca y explora libremente.")
+            step("3", tr("info.how.step3.title"), tr("info.how.step3.desc")),
+            step("4", tr("info.how.step4.title"), tr("info.how.step4.desc"))
           )
         )
       ),
 
       # ── Barra de estado footer ───────────────────────────────────────────────
       tags$div(class = "mi-w95-statusbar",
-        tags$a(href = repo_prensa,   target = "_blank", rel = "noopener", "Datos: prensa_chile"),
+        tags$a(href = repo_prensa,   target = "_blank", rel = "noopener", tr("info.footer.data")),
         tags$span("|"),
-        tags$a(href = repo_analisis, target = "_blank", rel = "noopener", "Pipeline: analisis-noticias"),
-        tags$span("Licencia MIT \u00b7 Datos sujetos a TOS de cada medio.")
+        tags$a(href = repo_analisis, target = "_blank", rel = "noopener", tr("info.footer.pipeline")),
+        tags$span(tr("info.footer.license"))
       )
     )
   })
@@ -2074,7 +2073,7 @@ server <- function(input, output, session) {
     n <- n_terminos()
     if (is.na(n)) n <- 0
     div(class = "card-box",
-        h5("Palabras únicas en el período"),
+        h5(tr("trends.card.unique_words")),
         div(class = "valor", format(as.integer(n), big.mark = ".", decimal.mark = ","))
     )
   })
@@ -2083,13 +2082,13 @@ server <- function(input, output, session) {
     tt <- termino_top()
     if (nrow(tt) == 0) {
       val <- "—"
-      sub <- "Sin datos"
+      sub <- tr("trends.card.top_word.no_data")
     } else {
       val <- tt$termino
-      sub <- paste(format(as.integer(tt$total), big.mark = ".", decimal.mark = ","), "apariciones")
+      sub <- paste(format(as.integer(tt$total), big.mark = ".", decimal.mark = ","), tr("trends.card.top_word.appearances"))
     }
     div(class = "card-box",
-        h5("Palabra más mencionada"),
+        h5(tr("trends.card.top_word")),
         div(class = "valor", val),
         p(style = "margin-bottom:0; font-size:0.9em;", sub)
     )
@@ -2098,9 +2097,9 @@ server <- function(input, output, session) {
   output$texto_volumen <- renderUI({
     v <- volumen()
     tags$span(
-      "Volumen: ",
-      tags$strong(format(round(v$total), big.mark = ".", decimal.mark = ",")), " noticias en el período · ",
-      "promedio ", tags$strong(v$promedio), " por día"
+      tr("trends.volume.label"),
+      tags$strong(format(round(v$total), big.mark = ".", decimal.mark = ",")), tr("trends.volume.suffix"),
+      tr("trends.volume.avg_prefix"), tags$strong(v$promedio), tr("trends.volume.avg_suffix")
     )
   })
 
@@ -2122,7 +2121,7 @@ server <- function(input, output, session) {
       selected <- head(disponibles, min(2L, length(disponibles)))
     div(class = "term-chips-box",
       tags$label(class = "control-label", style = "display: block; margin-bottom: 6px;",
-        "Términos para comparar"
+        tr("trends.terms_compare.label")
       ),
       checkboxGroupInput(
         "terminos_evolucion",
@@ -2178,10 +2177,10 @@ server <- function(input, output, session) {
   output$frecuencia_termino <- renderUI({
     busq <- trimws(if (is.null(input$busqueda_termino)) "" else input$busqueda_termino)
     if (nchar(busq) == 0)
-      return(tags$p(class = "frecuencia-termino-msg", "Escribe una palabra arriba para ver cuántas veces aparece en los titulares y sus variantes. Haz clic para añadirla al gráfico."))
+      return(tags$p(class = "frecuencia-termino-msg", tr("trends.term_search.hint")))
     res <- resultados_busqueda_termino()
     if (is.null(res) || nrow(res) == 0)
-      return(tags$p(class = "frecuencia-termino-msg", paste0("No se encontraron términos que coincidan con \"", busq, "\".")))
+      return(tags$p(class = "frecuencia-termino-msg", paste0(tr("trends.term_search.no_match"), " \"", busq, "\".")))
     items <- lapply(seq_len(nrow(res)), function(i) {
       term_esc <- gsub("\\\\", "\\\\\\\\", gsub("'", "\\\\'", res$termino[i], fixed = TRUE), fixed = TRUE)
       onclick_js <- sprintf("Shiny.setInputValue('termo_añadir_evol', '%s', {priority: 'event'})", term_esc)
@@ -2224,7 +2223,7 @@ server <- function(input, output, session) {
       )
     })
     tags$div(
-      tags$p(style = "font-size: 0.85em; color: #6c757d; margin-bottom: 4px;", paste0("Variantes encontradas para '", busq, "':")),
+      tags$p(style = "font-size: 0.85em; color: #6c757d; margin-bottom: 4px;", paste0(tr("trends.term_search.variants_found"), " '", busq, "':")),
       tags$div(class = "frecuencia-termino-lista", items)
     )
   })
@@ -2244,7 +2243,7 @@ server <- function(input, output, session) {
         add_trace(x = 0, y = 0, type = "scatter", mode = "markers",
                   marker = list(opacity = 0, size = 0.1), hoverinfo = "skip", showlegend = FALSE) %>%
         layout(
-          title = list(text = "Selecciona al menos un término en el panel izquierdo.", font = list(size = 14)),
+          title = list(text = tr("trends.chart.no_terms_selected"), font = list(size = 14)),
           margin = list(t = 60),
           xaxis = list(showticklabels = FALSE, zeroline = FALSE),
           yaxis = list(showticklabels = FALSE, zeroline = FALSE)
@@ -2266,16 +2265,16 @@ server <- function(input, output, session) {
           name = terminos[i],
           line = list(width = 1.5, color = paleta[(i - 1L) %% length(paleta) + 1L]),
           marker = list(size = 6, color = paleta[(i - 1L) %% length(paleta) + 1L]),
-          hovertemplate = paste0("Año: %{x}<br>Frecuencia: %{y:.0f}<br>Término: ", terminos[i], "<extra></extra>")
+          hovertemplate = paste0(tr("trends.chart.hover.year"), "%{x}<br>", tr("trends.chart.hover.frequency"), "%{y:.0f}<br>", tr("trends.chart.hover.term"), terminos[i], "<extra></extra>")
         )
       }
       anos <- sort(unique(d$ano))
       p <- p %>% layout(
-        xaxis = list(title = "Año", tickvals = anos, zeroline = FALSE, showgrid = TRUE),
-        yaxis = list(title = "Frecuencia", zeroline = FALSE, showgrid = TRUE),
+        xaxis = list(title = tr("trends.chart.axis.year"), tickvals = anos, zeroline = FALSE, showgrid = TRUE),
+        yaxis = list(title = tr("trends.chart.axis.frequency"), zeroline = FALSE, showgrid = TRUE),
         legend = list(orientation = "v", x = 0.99, xanchor = "right", y = 0.99, yanchor = "top",
                       bgcolor = "rgba(255,255,255,0.85)", bordercolor = "#ccc", borderwidth = 1,
-                      title = list(text = "Término"), font = list(size = 10, family = "Arial, sans-serif"),
+                      title = list(text = tr("trends.chart.legend.term")), font = list(size = 10, family = "Arial, sans-serif"),
                       tracegroupgap = 0),
         margin = list(b = 50, t = 30, l = 60, r = 30)
       )
@@ -2303,14 +2302,14 @@ server <- function(input, output, session) {
           name = terminos[i],
           line = list(width = 1.5, color = paleta[(i - 1L) %% length(paleta) + 1L]),
           marker = list(size = 6, color = paleta[(i - 1L) %% length(paleta) + 1L]),
-          hovertemplate = paste0("Fecha: %{x|%d/%m/%Y}<br>Frecuencia: %{y:.0f}<br>Término: ", terminos[i], "<extra></extra>")
+          hovertemplate = paste0(tr("trends.chart.hover.date"), "%{x|%d/%m/%Y}<br>", tr("trends.chart.hover.frequency"), "%{y:.0f}<br>", tr("trends.chart.hover.term"), terminos[i], "<extra></extra>")
         )
       }
       tickvals_ms <- as.numeric(as.POSIXct(breaks_x, tz = "UTC")) * 1000
       p <- p %>% layout(
         xaxis = list(
           type = "date",
-          title = list(text = "Fecha", standoff = 12),
+          title = list(text = tr("trends.chart.axis.date"), standoff = 12),
           tickmode = "array",
           tickvals = tickvals_ms,
           ticktext = format(breaks_x, tick_fmt),
@@ -2320,15 +2319,15 @@ server <- function(input, output, session) {
           showgrid = TRUE,
           range = as.numeric(as.POSIXct(rango, tz = "UTC")) * 1000
         ),
-        yaxis = list(title = "Frecuencia", zeroline = FALSE, showgrid = TRUE),
+        yaxis = list(title = tr("trends.chart.axis.frequency"), zeroline = FALSE, showgrid = TRUE),
         legend = list(orientation = "v", x = 0.99, xanchor = "right", y = 0.99, yanchor = "top",
                       bgcolor = "rgba(255,255,255,0.85)", bordercolor = "#ccc", borderwidth = 1,
-                      title = list(text = "Término"), font = list(size = 10, family = "Arial, sans-serif"),
+                      title = list(text = tr("trends.chart.legend.term")), font = list(size = 10, family = "Arial, sans-serif"),
                       tracegroupgap = 0),
         margin = list(b = 60, t = 30, l = 60, r = 30)
       )
     }
-    p %>% config(displayModeBar = TRUE, locale = "es")
+    p %>% config(displayModeBar = TRUE, locale = current_lang())
   })
 
   output$grafico_top_terminos <- renderPlotly({
@@ -2336,7 +2335,7 @@ server <- function(input, output, session) {
     if (nrow(top) == 0) {
       return(plot_ly(type = "scatter", mode = "markers") %>%
         add_annotations(
-          text = "No hay datos para el rango elegido.",
+          text = tr("trends.top_terms_chart.no_data"),
           x = 0.5, y = 0.5, xref = "paper", yref = "paper", showarrow = FALSE, font = list(size = 14)
         ) %>%
         layout(xaxis = list(showticklabels = FALSE), yaxis = list(showticklabels = FALSE)) %>%
@@ -2375,16 +2374,16 @@ server <- function(input, output, session) {
               color = colorRampPalette(c("#6c9bd1", "#0d6efd"))(nrow(top_df)),
               line = list(color = "rgba(255,255,255,0)", width = 0)
             ),
-            hovertemplate = "<b>%{y}</b><br>Frecuencia: %{x:,.0f}<br>Términos: %{customdata}<extra></extra>"
+            hovertemplate = paste0("<b>%{y}</b><br>", tr("trends.top_terms_chart.hover.frequency"), "%{x:,.0f}<br>", tr("trends.top_terms_chart.hover.terms"), "%{customdata}<extra></extra>")
           ) %>%
           layout(
-            xaxis = list(title = "Frecuencia total", zeroline = FALSE, showgrid = TRUE, gridcolor = "#eee"),
+            xaxis = list(title = tr("trends.top_terms_chart.axis.total_frequency"), zeroline = FALSE, showgrid = TRUE, gridcolor = "#eee"),
             yaxis = list(title = NULL, tickfont = list(size = 11)),
             margin = list(l = 140, r = 30, t = 20, b = 50),
             plot_bgcolor = "#ffffff",
             paper_bgcolor = "#ffffff"
           ) %>%
-          config(displayModeBar = TRUE, locale = "es")
+          config(displayModeBar = TRUE, locale = current_lang())
         )
       }
     }
@@ -2398,16 +2397,16 @@ server <- function(input, output, session) {
         color = colorRampPalette(c("#6c9bd1", "#0d6efd"))(nrow(top)),
         line = list(color = "rgba(255,255,255,0)", width = 0)
       ),
-      hovertemplate = "<b>%{y}</b><br>Frecuencia: %{x:,.0f}<extra></extra>"
+      hovertemplate = paste0("<b>%{y}</b><br>", tr("trends.top_terms_chart.hover.frequency"), "%{x:,.0f}<extra></extra>")
     ) %>%
     layout(
-      xaxis = list(title = "Frecuencia total", zeroline = FALSE, showgrid = TRUE, gridcolor = "#eee"),
+      xaxis = list(title = tr("trends.top_terms_chart.axis.total_frequency"), zeroline = FALSE, showgrid = TRUE, gridcolor = "#eee"),
       yaxis = list(title = NULL, tickfont = list(size = 11)),
       margin = list(l = 140, r = 30, t = 20, b = 50),
       plot_bgcolor = "#ffffff",
       paper_bgcolor = "#ffffff"
     ) %>%
-    config(displayModeBar = TRUE, locale = "es")
+    config(displayModeBar = TRUE, locale = current_lang())
   })
 
   output$paginacion_noticias <- renderUI({
@@ -2415,17 +2414,17 @@ server <- function(input, output, session) {
     dir <- orden_fecha()
     flecha <- if (dir == "DESC") "\u2193" else "\u2191"
     sort_link <- actionLink("toggle_fecha_orden",
-      label = paste0("Fecha ", flecha),
+      label = paste0(tr("trends.pagination.date_sort"), " ", flecha),
       style = "font-size: 0.85em; cursor: pointer;"
     )
-    if (total == 0) return(tagList(sort_link, tags$p("No hay noticias en el rango elegido.")))
+    if (total == 0) return(tagList(sort_link, tags$p(tr("trends.pagination.no_news"))))
     pg <- page_noticias()
     desde <- (pg - 1L) * 5L + 1L
     hasta <- as.integer(min(pg * 5L, total))
     tagList(
       tags$div(style = "display: flex; align-items: center; gap: 1rem; margin-bottom: 4px;",
         sort_link,
-        tags$span(class = "small-metric", paste0("Mostrando ", desde, "-", hasta, " de ", format(as.integer(total), big.mark = ".", decimal.mark = ","), " (5 por página)"))
+        tags$span(class = "small-metric", paste0(tr("trends.pagination.showing"), " ", desde, "-", hasta, " ", tr("trends.pagination.of"), " ", format(as.integer(total), big.mark = ".", decimal.mark = ","), " ", tr("trends.pagination.per_page")))
       )
     )
   })
@@ -2437,9 +2436,9 @@ server <- function(input, output, session) {
     pg <- page_noticias()
     tagList(
       tags$div(style = "margin-top: 12px;"),
-      actionButton("pag_prev", "← Anterior", class = "btn-sm", disabled = pg <= 1L),
-      tags$span(style = "margin: 0 10px;", paste("Página", pg, "de", npag)),
-      actionButton("pag_next", "Siguiente →", class = "btn-sm", disabled = pg >= npag)
+      actionButton("pag_prev", tr("trends.pagination.prev"), class = "btn-sm", disabled = pg <= 1L),
+      tags$span(style = "margin: 0 10px;", paste(tr("trends.pagination.page"), pg, tr("trends.pagination.of"), npag)),
+      actionButton("pag_next", tr("trends.pagination.next"), class = "btn-sm", disabled = pg >= npag)
     )
   })
 
@@ -2454,11 +2453,14 @@ server <- function(input, output, session) {
 
   output$tabla_noticias <- renderTable({
     t <- tabla_noticias()
-    if (nrow(t) == 0) return(data.frame(Mensaje = "No hay noticias en esta página."))
-    t$url <- paste0('<a href="', t$url, '" target="_blank" rel="noopener">Enlace</a>')
+    if (nrow(t) == 0) return(setNames(data.frame(tr("trends.table.no_news_page")), " "))
+    t$url <- paste0('<a href="', t$url, '" target="_blank" rel="noopener">', tr("trends.table.col.link"), '</a>')
     t$titulo <- substr(t$titulo, 1, 70)
     t$fecha <- as.character(t$fecha)
-    names(t)[names(t) == "medio"] <- "Medio"
+    names(t)[names(t) == "titulo"] <- tr("trends.table.col.title")
+    names(t)[names(t) == "fecha"] <- tr("trends.table.col.date")
+    names(t)[names(t) == "medio"] <- tr("trends.table.col.media")
+    names(t)[names(t) == "url"] <- ""
     t
   }, striped = TRUE, hover = TRUE, sanitize.text.function = function(x) x)
 
@@ -2757,10 +2759,10 @@ server <- function(input, output, session) {
   output$frecuencia_termino_medios <- renderUI({
     busq <- trimws(if (is.null(input$busqueda_termino_medios)) "" else input$busqueda_termino_medios)
     if (nchar(busq) == 0)
-      return(tags$p(class = "frecuencia-termino-msg", "Escribe una palabra arriba para ver cuántas veces aparece en los titulares y sus variantes. Haz clic para añadirla al gráfico."))
+      return(tags$p(class = "frecuencia-termino-msg", tr("trends.term_search.hint")))
     res <- resultados_busqueda_termino_medios()
     if (is.null(res) || nrow(res) == 0)
-      return(tags$p(class = "frecuencia-termino-msg", paste0("No se encontraron términos que coincidan con \"", busq, "\".")))
+      return(tags$p(class = "frecuencia-termino-msg", paste0(tr("trends.term_search.no_match"), " \"", busq, "\".")))
     items <- lapply(seq_len(nrow(res)), function(i) {
       term_esc <- gsub("\\\\", "\\\\\\\\", gsub("'", "\\\\'", res$termino[i], fixed = TRUE), fixed = TRUE)
       onclick_js <- sprintf("Shiny.setInputValue('termo_añadir_medios', '%s', {priority: 'event'})", term_esc)
@@ -2803,7 +2805,7 @@ server <- function(input, output, session) {
       )
     })
     tags$div(
-      tags$p(style = "font-size: 0.85em; color: #6c757d; margin-bottom: 4px;", paste0("Variantes encontradas para '", busq, "':")),
+      tags$p(style = "font-size: 0.85em; color: #6c757d; margin-bottom: 4px;", paste0(tr("trends.term_search.variants_found"), " '", busq, "':")),
       tags$div(class = "frecuencia-termino-lista", items)
     )
   })
@@ -2822,7 +2824,7 @@ server <- function(input, output, session) {
         add_trace(x = 0, y = 0, type = "scatter", mode = "markers",
                   marker = list(opacity = 0, size = 0.1), hoverinfo = "skip", showlegend = FALSE) %>%
         layout(
-          title = list(text = "Selecciona al menos un término en el panel izquierdo.", font = list(size = 14)),
+          title = list(text = tr("trends.chart.no_terms_selected"), font = list(size = 14)),
           margin = list(t = 60),
           xaxis = list(showticklabels = FALSE, zeroline = FALSE),
           yaxis = list(showticklabels = FALSE, zeroline = FALSE)
@@ -2844,26 +2846,26 @@ server <- function(input, output, session) {
         hovertemplate = paste0("%{x}<br>", terminos[i], ": %{y:.0f}<extra></extra>")
       )
     }
-    metrica_label <- "Noticias con el término en el titular"
+    metrica_label <- tr("media.chart.metric_label")
     p <- p %>% layout(
       barmode = "group",
-      xaxis = list(title = "Medio", tickangle = -45, categoryorder = "array", categoryarray = medios_orden),
+      xaxis = list(title = tr("media.chart.axis.outlet"), tickangle = -45, categoryorder = "array", categoryarray = medios_orden),
       yaxis = list(title = metrica_label, zeroline = FALSE),
       legend = list(orientation = "v", x = 0.99, xanchor = "right", y = 0.99, yanchor = "top",
                     bgcolor = "rgba(255,255,255,0.85)", bordercolor = "#ccc", borderwidth = 1,
-                    title = list(text = "Concepto"), font = list(size = 10, family = "Arial, sans-serif"),
+                    title = list(text = tr("media.chart.legend.concept")), font = list(size = 10, family = "Arial, sans-serif"),
                     tracegroupgap = 0),
       margin = list(b = 80, t = 30, l = 60, r = 30)
     )
-    p %>% config(displayModeBar = TRUE, locale = "es")
+    p %>% config(displayModeBar = TRUE, locale = current_lang())
   })
   outputOptions(output, "grafico_conceptos_por_medio", suspendWhenHidden = FALSE)
 
   # ---- Diagnóstico de captura por medio (para colorear el gráfico de volumen) ----
   # Problemas conocidos que no se pueden inferir de los datos (curado a mano).
-  PROBLEMAS_MEDIOS_FIJOS <- c(
-    izquierdadiario = "Scraper roto: el sitio bloquea la captura automática (error 403).",
-    redgol = "Fuente descontinuada: el sitio cambió su estructura y el scraper fue retirado. Cobertura hasta noviembre 2024."
+  problemas_medios_fijos <- function() c(
+    izquierdadiario = tr("media.diag.scraper_broken"),
+    redgol = tr("media.diag.discontinued")
   )
   DIAG_UMBRAL_GAP_DIAS <- 30L
 
@@ -2899,18 +2901,19 @@ server <- function(input, output, session) {
     con_gap <- d$gap_dias >= DIAG_UMBRAL_GAP_DIAS
     d$estado[con_gap] <- "gap"
     d$problema[con_gap] <- sprintf(
-      "⚠ Gap de datos: sin noticias del %s al %s (%d días).",
+      tr("media.diag.gap"),
       format(as.Date(d$gap_desde[con_gap]), "%d-%m-%Y"),
       format(as.Date(d$gap_hasta[con_gap]), "%d-%m-%Y"),
       d$gap_dias[con_gap])
     inactivo <- d$dias_inactivo >= DIAG_UMBRAL_GAP_DIAS
     d$estado[inactivo] <- "malo"
     d$problema[inactivo] <- sprintf(
-      "⛔ Inactivo: sin noticias desde el %s.",
+      tr("media.diag.inactive"),
       format(as.Date(d$ultima[inactivo]), "%d-%m-%Y"))
-    fijo <- d$fuente %in% names(PROBLEMAS_MEDIOS_FIJOS)
+    problemas_fijos <- problemas_medios_fijos()
+    fijo <- d$fuente %in% names(problemas_fijos)
     d$estado[fijo] <- "malo"
-    d$problema[fijo] <- paste0("⛔ ", PROBLEMAS_MEDIOS_FIJOS[d$fuente[fijo]])
+    d$problema[fijo] <- paste0("⛔ ", problemas_fijos[d$fuente[fijo]])
     d
   })
 
@@ -2922,7 +2925,7 @@ server <- function(input, output, session) {
         add_trace(x = 0, y = 0, type = "scatter", mode = "markers",
                   marker = list(opacity = 0, size = 0.1), hoverinfo = "skip", showlegend = FALSE) %>%
         layout(
-          title = list(text = "No hay datos para el rango elegido.", font = list(size = 14)),
+          title = list(text = tr("trends.top_terms_chart.no_data"), font = list(size = 14)),
           margin = list(t = 60),
           xaxis = list(showticklabels = FALSE, zeroline = FALSE),
           yaxis = list(showticklabels = FALSE, zeroline = FALSE)
@@ -2950,16 +2953,16 @@ server <- function(input, output, session) {
         color = colores,
         line = list(color = "rgba(255,255,255,0)", width = 0)
       ),
-      hovertemplate = "<b>%{y}</b><br>Noticias: %{x:,.0f}%{customdata}<extra></extra>"
+      hovertemplate = paste0("<b>%{y}</b><br>", tr("media.chart.hover.news"), "%{x:,.0f}%{customdata}<extra></extra>")
     ) %>%
     layout(
-      xaxis = list(title = "Número de noticias", zeroline = FALSE, showgrid = TRUE, gridcolor = "#eee"),
+      xaxis = list(title = tr("media.chart.axis.news_count"), zeroline = FALSE, showgrid = TRUE, gridcolor = "#eee"),
       yaxis = list(title = NULL, tickfont = list(size = 11)),
       margin = list(l = 130, r = 30, t = 20, b = 50),
       plot_bgcolor = "#ffffff",
       paper_bgcolor = "#ffffff"
     ) %>%
-    config(displayModeBar = TRUE, locale = "es")
+    config(displayModeBar = TRUE, locale = current_lang())
   })
 
   # ---- Términos más repetidos por medio (gráfico de barras) ----
@@ -2980,7 +2983,7 @@ server <- function(input, output, session) {
 
   output$selector_medio_terminos <- renderUI({
     medios <- noticias_por_medio()$medio
-    if (length(medios) == 0) return(tags$p(class = "small-metric", "No hay medios en el período."))
+    if (length(medios) == 0) return(tags$p(class = "small-metric", tr("media.selector.no_outlets")))
     sel <- selected_medio_terminos()
     if (is.null(sel)) sel <- medios[1]
     selectInput("medio_terminos_seleccionado", label = NULL, choices = medios, selected = sel)
@@ -3044,7 +3047,7 @@ server <- function(input, output, session) {
     if (nrow(datos) == 0L) {
       return(plot_ly(type = "scatter", mode = "markers") %>%
         add_annotations(
-          text = "Sin datos para este período o umbral seleccionado.",
+          text = tr("media.network.no_data"),
           x = 0.5, y = 0.5, xref = "paper", yref = "paper", showarrow = FALSE,
           font = list(size = 14)
         ) %>%
@@ -3054,7 +3057,7 @@ server <- function(input, output, session) {
     if (!requireNamespace("igraph", quietly = TRUE)) {
       return(plot_ly(type = "scatter", mode = "markers") %>%
         add_annotations(
-          text = "Instalar igraph: install.packages('igraph')",
+          text = tr("media.network.missing_igraph"),
           x = 0.5, y = 0.5, xref = "paper", yref = "paper", showarrow = FALSE,
           font = list(size = 14)
         ) %>%
@@ -3106,7 +3109,7 @@ server <- function(input, output, session) {
       p <- p %>% add_trace(
         x = coords[idx, 1], y = coords[idx, 2],
         type = "scatter", mode = "markers+text",
-        name = paste0("Grupo ", com),
+        name = paste0(tr("media.network.legend.group"), " ", com),
         text = nodo_ids[idx],
         textposition = "top center",
         textfont = list(size = 11, color = "#333"),
@@ -3117,7 +3120,7 @@ server <- function(input, output, session) {
           line = list(color = "#ffffff", width = 1.5)
         ),
         customdata = grado[idx],
-        hovertemplate = paste0("<b>%{text}</b><br>Conexiones: %{customdata}<extra></extra>"),
+        hovertemplate = paste0("<b>%{text}</b><br>", tr("media.network.hover.connections"), "%{customdata}<extra></extra>"),
         showlegend = TRUE
       )
     }
@@ -3147,7 +3150,7 @@ server <- function(input, output, session) {
             p <- p %>% add_trace(
               x = sem_x, y = sem_y,
               type = "scatter", mode = "lines",
-              name = "Relación semántica",
+              name = tr("media.network.legend.semantic"),
               line = list(color = "rgba(13,110,253,0.3)", width = 1.5, dash = "dot"),
               hoverinfo = "skip", showlegend = TRUE
             )
@@ -3159,7 +3162,7 @@ server <- function(input, output, session) {
       autosize = TRUE,
       legend = list(
         orientation = "v", x = 0.01, xanchor = "left", y = 0.99, yanchor = "top",
-        title = list(text = "Comunidades"),
+        title = list(text = tr("media.network.legend.communities")),
         bgcolor = "rgba(255,255,255,0.82)", bordercolor = "#e2e8f0", borderwidth = 1,
         font = list(size = 10)
       ),
@@ -3206,7 +3209,7 @@ server <- function(input, output, session) {
     "t13"="T13","theclinic"="The Clinic","redgol"="RedGol","lasegunda"="La Segunda",
     "eldesconcierto"="El Desconcierto","quintopoder"="El Quinto Poder","izquierdadiario"="La Izquierda Diario")
   nombres_medios <- function(x) { y <- NOMBRES_MEDIOS[x]; y[is.na(y)] <- x[is.na(y)]; unname(y) }
-  sent_sin_datos <- function(msg = "Sin datos de sentimiento para este período todavía.") {
+  sent_sin_datos <- function(msg = tr("sent.no_data")) {
     plot_ly(type = "scatter", mode = "markers") %>%
       add_annotations(text = msg, x = 0.5, y = 0.5, xref = "paper", yref = "paper",
                       showarrow = FALSE, font = list(size = 15, color = "#94a3b8", family = "Inter, sans-serif")) %>%
@@ -3231,8 +3234,8 @@ server <- function(input, output, session) {
   output$sent_subtitulo <- renderUI({
     m <- medio_sel()
     tags$p(class = "sent-hint", if (m == "todos")
-      "Mostrando todos los medios — elige uno para ver su detalle"
-      else paste0("Mostrando: ", nombres_medios(m)))
+      tr("sent.subtitle.all_media")
+      else paste0(tr("sent.subtitle.showing_prefix"), " ", nombres_medios(m)))
   })
 
   # ---- Cobertura real del análisis de sentimiento ----
@@ -3279,7 +3282,7 @@ server <- function(input, output, session) {
     div(class = "sent-aviso-rango",
       tags$span("⚠"),
       tags$span(HTML(sprintf(
-        "El análisis de sentimiento cubre titulares desde el <b>%s</b> hasta el <b>%s</b>. Lo que ves abajo corresponde solo a ese período; el resto del rango elegido no tiene titulares clasificados.",
+        tr("sent.coverage_notice"),
         format(cob$desde, "%d-%m-%Y"), format(cob$hasta, "%d-%m-%Y")))))
   })
 
@@ -3314,18 +3317,18 @@ server <- function(input, output, session) {
   output$sent_hero_net <- renderUI({
     s <- sentimiento_periodo()
     if (s$tot == 0L) return(div(class = "sent-net-card neu",
-      div(class = "lbl", "Tono neto del período"), div(class = "big", "—"),
-      div(class = "desc", "Sin titulares clasificados aún")))
+      div(class = "lbl", tr("sent.hero.title")), div(class = "big", "—"),
+      div(class = "desc", tr("sent.hero.no_data"))))
     net <- round(s$net)
     cls  <- if (net <= -8) "neg" else if (net >= 8) "pos" else "neu"
-    desc <- if (net <= -8) "Predomina el tono negativo"
-            else if (net >= 8) "Predomina el tono positivo"
-            else "Tono mayormente equilibrado"
+    desc <- if (net <= -8) tr("sent.hero.dominant_negative")
+            else if (net >= 8) tr("sent.hero.dominant_positive")
+            else tr("sent.hero.balanced")
     delta <- if (is.na(s$net_prev)) NA_real_ else net - round(s$net_prev)
     vs <- if (is.na(delta)) NULL else div(class = "vs",
-      sprintf("%s %d vs. período anterior", if (delta > 0) "▲" else if (delta < 0) "▼" else "→", abs(delta)))
+      sprintf("%s %d %s", if (delta > 0) "▲" else if (delta < 0) "▼" else "→", abs(delta), tr("sent.hero.vs_previous")))
     div(class = paste("sent-net-card", cls),
-      div(class = "lbl", "Tono neto del período"),
+      div(class = "lbl", tr("sent.hero.title")),
       div(class = "big", sprintf("%+d", net)),
       div(class = "desc", desc),
       vs)
@@ -3334,7 +3337,7 @@ server <- function(input, output, session) {
   # ---- Barra 100% interactiva (clic = filtro de tono de la tabla) ----
   output$sent_barra_periodo <- renderUI({
     s <- sentimiento_periodo()
-    if (s$tot == 0L) return(div(class = "small-metric", "Sin datos en el período."))
+    if (s$tot == 0L) return(div(class = "small-metric", tr("sent.bar.no_data")))
     fr <- s$cur / s$tot * 100
     activo <- tono_sel()
     seg <- function(tono, cls, val) {
@@ -3345,25 +3348,25 @@ server <- function(input, output, session) {
           if (val >= 8) paste0(round(val), "%") else "")
     }
     chip_cls <- c(negativo = "neg", neutral = "neu", positivo = "pos")
-    chip_lab <- c(negativo = "Negativos", neutral = "Neutrales", positivo = "Positivos")
+    chip_lab <- c(negativo = tr("sent.chip.negative"), neutral = tr("sent.chip.neutral"), positivo = tr("sent.chip.positive"))
     filtro_info <- if (activo != "todos")
       div(class = "sent-filtro-activo",
-        tags$span("Tabla filtrada a "),
+        tags$span(paste0(tr("sent.bar.filtered_to"), " ")),
         tags$span(class = paste("sent-chip", chip_cls[[activo]]), chip_lab[[activo]]),
         tags$button(class = "limpiar", type = "button",
-          onclick = "Shiny.setInputValue('sent_bar_click','__clear__',{priority:'event'})", "× limpiar"))
+          onclick = "Shiny.setInputValue('sent_bar_click','__clear__',{priority:'event'})", tr("sent.bar.clear")))
     else
       div(class = "sent-filtro-activo",
-        tags$span(style = "color:#94a3b8;", "Haz clic en un color para filtrar ese tono en la tabla de abajo."))
+        tags$span(style = "color:#94a3b8;", tr("sent.bar.click_hint")))
     tagList(
       div(class = trimws(paste("sent-bar", if (activo != "todos") "has-sel" else "")),
         seg("negativo", "neg", fr["negativo"]),
         seg("neutral",  "neu", fr["neutral"]),
         seg("positivo", "pos", fr["positivo"])),
       div(class = "sent-legend vals",
-        span(tags$i(style = "background:#dc2626"), paste0("Negativo ", round(fr["negativo"]), "%")),
-        span(tags$i(style = "background:#94a3b8"), paste0("Neutral ", round(fr["neutral"]), "%")),
-        span(tags$i(style = "background:#16a34a"), paste0("Positivo ", round(fr["positivo"]), "%"))),
+        span(tags$i(style = "background:#dc2626"), paste0(tr("sent.legend.negative"), " ", round(fr["negativo"]), "%")),
+        span(tags$i(style = "background:#94a3b8"), paste0(tr("sent.legend.neutral"), " ", round(fr["neutral"]), "%")),
+        span(tags$i(style = "background:#16a34a"), paste0(tr("sent.legend.positive"), " ", round(fr["positivo"]), "%"))),
       filtro_info
     )
   })
@@ -3390,27 +3393,27 @@ server <- function(input, output, session) {
     net <- round((pos - neg) / tot * 100)
     periodoD <- as.Date(periodos)
     plot_ly() %>%
-      add_trace(x = periodoD, y = neg, name = "Negativo", type = "scatter", mode = "none",
+      add_trace(x = periodoD, y = neg, name = tr("sent.legend.negative"), type = "scatter", mode = "none",
                 stackgroup = "one", groupnorm = "percent", fillcolor = COL_SENT["negativo"],
-                hovertemplate = "%{y:.0f}%<extra>Negativo</extra>") %>%
-      add_trace(x = periodoD, y = neu, name = "Neutral", type = "scatter", mode = "none",
+                hovertemplate = paste0("%{y:.0f}%<extra>", tr("sent.legend.negative"), "</extra>")) %>%
+      add_trace(x = periodoD, y = neu, name = tr("sent.legend.neutral"), type = "scatter", mode = "none",
                 stackgroup = "one", fillcolor = COL_SENT["neutral"],
-                hovertemplate = "%{y:.0f}%<extra>Neutral</extra>") %>%
-      add_trace(x = periodoD, y = pos, name = "Positivo", type = "scatter", mode = "none",
+                hovertemplate = paste0("%{y:.0f}%<extra>", tr("sent.legend.neutral"), "</extra>")) %>%
+      add_trace(x = periodoD, y = pos, name = tr("sent.legend.positive"), type = "scatter", mode = "none",
                 stackgroup = "one", fillcolor = COL_SENT["positivo"],
-                hovertemplate = "%{y:.0f}%<extra>Positivo</extra>") %>%
-      add_trace(x = periodoD, y = net, name = "Tono neto", type = "scatter", mode = "lines+markers",
+                hovertemplate = paste0("%{y:.0f}%<extra>", tr("sent.legend.positive"), "</extra>")) %>%
+      add_trace(x = periodoD, y = net, name = tr("sent.legend.net_tone"), type = "scatter", mode = "lines+markers",
                 yaxis = "y2", line = list(color = "#0f172a", width = 2),
                 marker = list(size = 4, color = "#0f172a"),
-                hovertemplate = "Tono neto: %{y}<extra></extra>") %>%
+                hovertemplate = paste0(tr("sent.chart.hover.net_tone"), "%{y}<extra></extra>")) %>%
       layout(font = list(family = "Inter, sans-serif"),
         xaxis = list(title = "", showgrid = FALSE),
-        yaxis = list(title = "Composición", ticksuffix = "%", range = c(0, 100), showgrid = FALSE),
-        yaxis2 = list(title = "Tono neto", overlaying = "y", side = "right", range = c(-100, 100),
+        yaxis = list(title = tr("sent.chart.axis.composition"), ticksuffix = "%", range = c(0, 100), showgrid = FALSE),
+        yaxis2 = list(title = tr("sent.legend.net_tone"), overlaying = "y", side = "right", range = c(-100, 100),
                       zeroline = TRUE, zerolinecolor = "#cbd5e1", showgrid = FALSE),
         legend = list(orientation = "h", x = 0, y = 1.13, font = list(size = 11)),
         hovermode = "x unified", margin = list(t = 34, b = 28, l = 52, r = 56)) %>%
-      config(displayModeBar = FALSE, locale = "es")
+      config(displayModeBar = FALSE, locale = current_lang())
   })
 
   # ---- Por medio (100% apilado horizontal, ordenado por tono neto) ----
@@ -3430,34 +3433,34 @@ server <- function(input, output, session) {
     ord <- order(ppos - pneg)               # ascendente → más positivo arriba (barras h se apilan de abajo)
     nm <- nombres_medios(medios[ord]); yf <- factor(nm, levels = nm)
     plot_ly() %>%
-      add_trace(y = yf, x = pneg[ord], name = "Negativo", type = "bar", orientation = "h",
+      add_trace(y = yf, x = pneg[ord], name = tr("sent.legend.negative"), type = "bar", orientation = "h",
                 marker = list(color = COL_SENT["negativo"]), customdata = neg[ord],
-                hovertemplate = "%{x:.0f}%  (%{customdata})<extra>Negativo</extra>") %>%
-      add_trace(y = yf, x = pneu[ord], name = "Neutral", type = "bar", orientation = "h",
+                hovertemplate = paste0("%{x:.0f}%  (%{customdata})<extra>", tr("sent.legend.negative"), "</extra>")) %>%
+      add_trace(y = yf, x = pneu[ord], name = tr("sent.legend.neutral"), type = "bar", orientation = "h",
                 marker = list(color = COL_SENT["neutral"]), customdata = neu[ord],
-                hovertemplate = "%{x:.0f}%  (%{customdata})<extra>Neutral</extra>") %>%
-      add_trace(y = yf, x = ppos[ord], name = "Positivo", type = "bar", orientation = "h",
+                hovertemplate = paste0("%{x:.0f}%  (%{customdata})<extra>", tr("sent.legend.neutral"), "</extra>")) %>%
+      add_trace(y = yf, x = ppos[ord], name = tr("sent.legend.positive"), type = "bar", orientation = "h",
                 marker = list(color = COL_SENT["positivo"]), customdata = pos[ord],
-                hovertemplate = "%{x:.0f}%  (%{customdata})<extra>Positivo</extra>") %>%
+                hovertemplate = paste0("%{x:.0f}%  (%{customdata})<extra>", tr("sent.legend.positive"), "</extra>")) %>%
       layout(barmode = "stack", font = list(family = "Inter, sans-serif"),
         xaxis = list(title = "", ticksuffix = "%", range = c(0, 100), showgrid = FALSE),
         yaxis = list(title = "", automargin = TRUE),
         legend = list(orientation = "h", x = 0, y = 1.04, font = list(size = 11)),
         margin = list(t = 26, b = 20, l = 10, r = 12)) %>%
-      config(displayModeBar = FALSE, locale = "es")
+      config(displayModeBar = FALSE, locale = current_lang())
   })
 
   # ---- Evolución en el tiempo, y debajo el ranking de medios (cuando es "Todos") ----
   output$sent_bento <- renderUI({
     evo <- div(class = "chart-card",
-      h4("¿Cómo cambió el tono en el tiempo?"),
-      tags$p(class = "small-metric", "Composición mensual del tono (100% apilado) y línea de tono neto: porcentaje de positivos menos negativos."),
+      h4(tr("sent.bento.evolution.title")),
+      tags$p(class = "small-metric", tr("sent.bento.evolution.hint")),
       plotlyOutput("grafico_sent_evolucion", height = "400px"))
     if (medio_sel() == "todos") {
       tagList(evo,
         div(class = "chart-card",
-          h4("¿Qué medios son más positivos o negativos?"),
-          tags$p(class = "small-metric", "Contraste del tono entre todos los medios, de más positivo (arriba) a más negativo (abajo). Elige un medio arriba para ver su detalle."),
+          h4(tr("sent.bento.by_outlet.title")),
+          tags$p(class = "small-metric", tr("sent.bento.by_outlet.hint")),
           plotlyOutput("grafico_sentimiento_por_fuente", height = "640px")))
     } else {
       evo
@@ -3474,7 +3477,7 @@ server <- function(input, output, session) {
     ch <- ch[order(names(ch))]
     sel <- isolate(input$sent_filtro_medio); if (is.null(sel)) sel <- "todos"
     updateSelectInput(session, "sent_filtro_medio",
-      choices = c("Todos los medios" = "todos", ch), selected = sel)
+      choices = c(setNames("todos", tr("sent.distribution.all_media")), ch), selected = sel)
   })
 
   # ---- Tabla de titulares: filtros compartidos + paginación (10 por página) ----
@@ -3519,19 +3522,19 @@ server <- function(input, output, session) {
     desde <- (pg - 1L) * 10L + 1L; hasta <- as.integer(min(pg * 10L, total))
     div(style = "display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top:14px; flex-wrap:wrap;",
       tags$span(class = "small-metric", style = "margin:0;",
-        sprintf("Mostrando %d–%d de %s", desde, hasta, format(as.integer(total), big.mark = ".", decimal.mark = ","))),
+        sprintf("%s %d–%d %s %s", tr("sent.pagination.showing"), desde, hasta, tr("trends.pagination.of"), format(as.integer(total), big.mark = ".", decimal.mark = ","))),
       div(style = "display:flex; align-items:center; gap:10px;",
-        actionButton("sent_pag_prev", "← Anterior", class = "btn-sm", disabled = pg <= 1L),
-        tags$span(class = "small-metric", style = "margin:0;", sprintf("Página %d de %d", pg, np)),
-        actionButton("sent_pag_next", "Siguiente →", class = "btn-sm", disabled = pg >= np))
+        actionButton("sent_pag_prev", tr("trends.pagination.prev"), class = "btn-sm", disabled = pg <= 1L),
+        tags$span(class = "small-metric", style = "margin:0;", sprintf("%s %d %s %d", tr("trends.pagination.page"), pg, tr("trends.pagination.of"), np)),
+        actionButton("sent_pag_next", tr("trends.pagination.next"), class = "btn-sm", disabled = pg >= np))
     )
   })
   output$tabla_sent_titulares <- renderUI({
     d <- sentimiento_titulares()
     if (is.null(d) || nrow(d) == 0L)
-      return(div(class = "small-metric", "No hay titulares clasificados para este filtro/período."))
+      return(div(class = "small-metric", tr("sent.table.no_headlines")))
     cls_map <- c(positivo = "pos", neutral = "neu", negativo = "neg")
-    lab_map <- c(positivo = "Positivo", neutral = "Neutral", negativo = "Negativo")
+    lab_map <- c(positivo = tr("sent.legend.positive"), neutral = tr("sent.legend.neutral"), negativo = tr("sent.legend.negative"))
     filas <- lapply(seq_len(nrow(d)), function(i) {
       s <- d$sentimiento[i]; conf <- d$confianza[i]
       tags$tr(
@@ -3561,7 +3564,7 @@ server <- function(input, output, session) {
     modelo <- if (is.na(m$modelo)) "—" else m$modelo
     conf <- if (is.na(m$conf)) "s/d" else paste0(m$conf, "%")
     div(class = "sent-meta", HTML(sprintf(
-      "Cobertura: <b>%s de %s</b> titulares clasificados (<b>%s%%</b>) · modelo <b>%s</b> · confianza media <b>%s</b>. El tono se clasifica con un modelo de lenguaje local sobre el titular.",
+      tr("sent.meta.coverage"),
       format(m$clasif, big.mark = ".", decimal.mark = ","), format(m$total, big.mark = ".", decimal.mark = ","), cob, modelo, conf)))
   })
 
@@ -3776,7 +3779,7 @@ server <- function(input, output, session) {
     medio_sel <- trimws(if (is.null(input$medio_evolucion_concepto)) "" else input$medio_evolucion_concepto)
     if (is.null(terms) || length(terms) == 0 || nchar(medio_sel) == 0) {
       return(plot_ly(type = "scatter", mode = "markers") %>%
-        add_annotations(text = "Selecciona un término y un medio para ver la evolución temporal.",
+        add_annotations(text = tr("media.concept_evol.select_hint"),
           x = 0.5, y = 0.5, xref = "paper", yref = "paper", showarrow = FALSE,
           font = list(size = 13, color = "#6c757d")) %>%
         layout(xaxis = list(showticklabels = FALSE, zeroline = FALSE),
@@ -3786,7 +3789,7 @@ server <- function(input, output, session) {
     d <- evolucion_concepto_por_medio()
     if (nrow(d) == 0) {
       return(plot_ly(type = "scatter", mode = "markers") %>%
-        add_annotations(text = paste0("Sin datos para los términos seleccionados en \"", medio_sel, "\" en este período."),
+        add_annotations(text = paste0(tr("media.concept_evol.no_data_prefix"), " \"", medio_sel, "\" ", tr("media.concept_evol.no_data_suffix")),
           x = 0.5, y = 0.5, xref = "paper", yref = "paper", showarrow = FALSE,
           font = list(size = 13)) %>%
         layout(xaxis = list(showticklabels = FALSE, zeroline = FALSE),
@@ -3808,13 +3811,13 @@ server <- function(input, output, session) {
           name = terminos_grafico[i],
           line = list(width = 1.5, color = paleta[(i - 1L) %% length(paleta) + 1L]),
           marker = list(size = 6, color = paleta[(i - 1L) %% length(paleta) + 1L]),
-          hovertemplate = paste0("Año: %{x}<br>Frecuencia: %{y:.0f}<br>Término: ", terminos_grafico[i], "<extra></extra>")
+          hovertemplate = paste0(tr("trends.chart.hover.year"), "%{x}<br>", tr("trends.chart.hover.frequency"), "%{y:.0f}<br>", tr("trends.chart.hover.term"), terminos_grafico[i], "<extra></extra>")
         )
       }
       p <- p %>% layout(
-        title = list(text = paste0("Evolución en \"", medio_sel, "\""), font = list(size = 13), x = 0.5, xanchor = "center"),
-        xaxis = list(title = "Año", tickvals = sort(unique(d$ano)), zeroline = FALSE, showgrid = TRUE),
-        yaxis = list(title = "Frecuencia", zeroline = FALSE, showgrid = TRUE),
+        title = list(text = paste0(tr("media.concept_evol.title_prefix"), " \"", medio_sel, "\""), font = list(size = 13), x = 0.5, xanchor = "center"),
+        xaxis = list(title = tr("trends.chart.axis.year"), tickvals = sort(unique(d$ano)), zeroline = FALSE, showgrid = TRUE),
+        yaxis = list(title = tr("trends.chart.axis.frequency"), zeroline = FALSE, showgrid = TRUE),
         legend = list(orientation = "v", x = 0.99, xanchor = "right", y = 0.99, yanchor = "top",
                       bgcolor = "rgba(255,255,255,0.85)", bordercolor = "#ccc", borderwidth = 1,
                       font = list(size = 10, family = "Arial, sans-serif"), tracegroupgap = 0),
@@ -3837,16 +3840,16 @@ server <- function(input, output, session) {
           name = terminos_grafico[i],
           line = list(width = 1.5, color = paleta[(i - 1L) %% length(paleta) + 1L]),
           marker = list(size = 5, color = paleta[(i - 1L) %% length(paleta) + 1L]),
-          hovertemplate = paste0("Fecha: %{x|%d/%m/%Y}<br>Frecuencia: %{y:.0f}<br>Término: ", terminos_grafico[i], "<extra></extra>")
+          hovertemplate = paste0(tr("trends.chart.hover.date"), "%{x|%d/%m/%Y}<br>", tr("trends.chart.hover.frequency"), "%{y:.0f}<br>", tr("trends.chart.hover.term"), terminos_grafico[i], "<extra></extra>")
         )
       }
       p <- p %>% layout(
-        title = list(text = paste0("Evolución en \"", medio_sel, "\""), font = list(size = 13), x = 0.5, xanchor = "center"),
-        xaxis = list(type = "date", title = list(text = "Fecha", standoff = 12),
+        title = list(text = paste0(tr("media.concept_evol.title_prefix"), " \"", medio_sel, "\""), font = list(size = 13), x = 0.5, xanchor = "center"),
+        xaxis = list(type = "date", title = list(text = tr("trends.chart.axis.date"), standoff = 12),
           tickmode = "array", tickvals = tickvals_ms, ticktext = format(breaks_x, tick_fmt),
           tickangle = if (dias_rango <= 31) -25 else -45, tickfont = list(size = 11),
           zeroline = FALSE, showgrid = TRUE),
-        yaxis = list(title = "Frecuencia", zeroline = FALSE, showgrid = TRUE),
+        yaxis = list(title = tr("trends.chart.axis.frequency"), zeroline = FALSE, showgrid = TRUE),
         legend = list(orientation = "v", x = 0.99, xanchor = "right", y = 0.99, yanchor = "top",
                       bgcolor = "rgba(255,255,255,0.85)", bordercolor = "#ccc", borderwidth = 1,
                       font = list(size = 10, family = "Arial, sans-serif"), tracegroupgap = 0),
@@ -3854,7 +3857,7 @@ server <- function(input, output, session) {
         plot_bgcolor = "#ffffff", paper_bgcolor = "#ffffff"
       )
     }
-    p %>% config(displayModeBar = TRUE, locale = "es")
+    p %>% config(displayModeBar = TRUE, locale = current_lang())
   })
 
   output$grafico_terminos_por_medio <- renderPlotly({
@@ -3862,7 +3865,7 @@ server <- function(input, output, session) {
     if (nrow(d) == 0) {
       return(plot_ly(type = "scatter", mode = "markers") %>%
         add_annotations(
-          text = "Sin datos para el medio elegido en este período.",
+          text = tr("media.terms_by_outlet.no_data"),
           x = 0.5, y = 0.5, xref = "paper", yref = "paper", showarrow = FALSE,
           font = list(size = 14)
         ) %>%
@@ -3880,7 +3883,7 @@ server <- function(input, output, session) {
       textposition = "inside",
       textinfo = "label+percent",
       insidetextorientation = "radial",
-      hovertemplate = "<b>%{label}</b><br>Frecuencia: %{value:,.0f}<br>%{percent}<extra></extra>",
+      hovertemplate = paste0("<b>%{label}</b><br>", tr("trends.chart.hover.frequency"), "%{value:,.0f}<br>%{percent}<extra></extra>"),
       marker = list(
         colors = colores_pie[seq_len(nrow(d))],
         line = list(color = "#ffffff", width = 1.5)
@@ -3889,13 +3892,13 @@ server <- function(input, output, session) {
     ) %>%
     layout(
       title = list(
-        text = paste0("Top 15 términos — ", selected_medio_terminos()),
+        text = paste0(tr("media.terms_by_outlet.pie_title_prefix"), " ", selected_medio_terminos()),
         font = list(size = 13), x = 0.5, xanchor = "center"
       ),
       margin = list(l = 20, r = 20, t = 50, b = 20),
       paper_bgcolor = "#ffffff"
     ) %>%
-    config(displayModeBar = TRUE, locale = "es")
+    config(displayModeBar = TRUE, locale = current_lang())
   })
 
   output$selector_evol_terminos_medio <- renderUI({
@@ -3921,7 +3924,7 @@ server <- function(input, output, session) {
     if (nrow(d) == 0) {
       return(plot_ly(type = "scatter", mode = "markers") %>%
         add_annotations(
-          text = "Sin datos para el medio elegido en este período.",
+          text = tr("media.terms_by_outlet.no_data"),
           x = 0.5, y = 0.5, xref = "paper", yref = "paper", showarrow = FALSE,
           font = list(size = 14)
         ) %>%
@@ -3933,7 +3936,7 @@ server <- function(input, output, session) {
     if (nrow(d) == 0) {
       return(plot_ly(type = "scatter", mode = "markers") %>%
         add_annotations(
-          text = "Selecciona al menos un término arriba.",
+          text = tr("media.terms_by_outlet.select_hint"),
           x = 0.5, y = 0.5, xref = "paper", yref = "paper", showarrow = FALSE,
           font = list(size = 13, color = "#6c757d")
         ) %>%
@@ -3955,13 +3958,13 @@ server <- function(input, output, session) {
           type = "scatter", mode = "lines+markers", name = terminos[i],
           line = list(width = 1.5, color = paleta[(i - 1L) %% length(paleta) + 1L]),
           marker = list(size = 6, color = paleta[(i - 1L) %% length(paleta) + 1L]),
-          hovertemplate = paste0("Año: %{x}<br>Frecuencia: %{y:.0f}<br>Término: ", terminos[i], "<extra></extra>")
+          hovertemplate = paste0(tr("trends.chart.hover.year"), "%{x}<br>", tr("trends.chart.hover.frequency"), "%{y:.0f}<br>", tr("trends.chart.hover.term"), terminos[i], "<extra></extra>")
         )
       }
       anos <- sort(unique(d$ano))
       p <- p %>% layout(
-        xaxis = list(title = "Año", tickvals = anos, zeroline = FALSE, showgrid = TRUE),
-        yaxis = list(title = "Frecuencia", zeroline = FALSE, showgrid = TRUE),
+        xaxis = list(title = tr("trends.chart.axis.year"), tickvals = anos, zeroline = FALSE, showgrid = TRUE),
+        yaxis = list(title = tr("trends.chart.axis.frequency"), zeroline = FALSE, showgrid = TRUE),
         legend = list(orientation = "v", x = 0.99, xanchor = "right", y = 0.99, yanchor = "top",
                       bgcolor = "rgba(255,255,255,0.85)", bordercolor = "#ccc", borderwidth = 1,
                       font = list(size = 10, family = "Arial, sans-serif"), tracegroupgap = 0),
@@ -3981,25 +3984,25 @@ server <- function(input, output, session) {
           type = "scatter", mode = "lines+markers", name = terminos[i],
           line = list(width = 1.5, color = paleta[(i - 1L) %% length(paleta) + 1L]),
           marker = list(size = 5, color = paleta[(i - 1L) %% length(paleta) + 1L]),
-          hovertemplate = paste0("Fecha: %{x|%d/%m/%Y}<br>Frecuencia: %{y:.0f}<br>Término: ", terminos[i], "<extra></extra>")
+          hovertemplate = paste0(tr("trends.chart.hover.date"), "%{x|%d/%m/%Y}<br>", tr("trends.chart.hover.frequency"), "%{y:.0f}<br>", tr("trends.chart.hover.term"), terminos[i], "<extra></extra>")
         )
       }
       tickvals_ms <- as.numeric(as.POSIXct(breaks_x, tz = "UTC")) * 1000
       p <- p %>% layout(
         xaxis = list(
-          type = "date", title = list(text = "Fecha", standoff = 12),
+          type = "date", title = list(text = tr("trends.chart.axis.date"), standoff = 12),
           tickmode = "array", tickvals = tickvals_ms, ticktext = format(breaks_x, tick_fmt),
           tickangle = if (dias_rango <= 31) -25 else -45, tickfont = list(size = 11),
           zeroline = FALSE, showgrid = TRUE
         ),
-        yaxis = list(title = "Frecuencia", zeroline = FALSE, showgrid = TRUE),
+        yaxis = list(title = tr("trends.chart.axis.frequency"), zeroline = FALSE, showgrid = TRUE),
         legend = list(orientation = "v", x = 0.99, xanchor = "right", y = 0.99, yanchor = "top",
                       bgcolor = "rgba(255,255,255,0.85)", bordercolor = "#ccc", borderwidth = 1,
                       font = list(size = 10, family = "Arial, sans-serif"), tracegroupgap = 0),
         margin = list(b = 60, t = 30, l = 60, r = 30)
       )
     }
-    p %>% config(displayModeBar = TRUE, locale = "es")
+    p %>% config(displayModeBar = TRUE, locale = current_lang())
   })
 
   outputOptions(output, "grafico_evolucion_concepto_por_medio", suspendWhenHidden = FALSE)
