@@ -320,23 +320,6 @@ fluidPage(
         transition: all 0.14s;
       }
       .preset-buttons .btn:hover { background: #e2e8f0; border-color: #cbd5e1; color: #0f172a; }
-      /* === IA SIDEBAR BUTTON === */
-      .btn-ia-sidebar {
-        width: 100%; display: flex; align-items: center; justify-content: center;
-        gap: 8px;
-        background: linear-gradient(135deg, #ede9fe 0%, #e0e7ff 100%);
-        border: 1.5px solid #c4b5fd; color: #5b21b6;
-        border-radius: 10px; padding: 13px 0;
-        font-size: 1.19rem; font-weight: 600; cursor: pointer;
-        transition: all 0.18s; line-height: 1.4;
-        box-shadow: 0 2px 8px rgba(124,58,237,0.10);
-      }
-      .btn-ia-sidebar:hover, .btn-ia-sidebar:focus {
-        background: linear-gradient(135deg, #ddd6fe 0%, #c7d2fe 100%);
-        border-color: #7c3aed; color: #4c1d95; outline: none;
-        box-shadow: 0 4px 14px rgba(124,58,237,0.18);
-        transform: translateY(-1px);
-      }
       /* === TAB NAVIGATION === */
       .nav-tabs {
         border-bottom: 2px solid #e2e8f0 !important;
@@ -589,74 +572,6 @@ fluidPage(
       }
       .btn-generar-ia:hover { background: #0b5ed7 !important; }
       .btn-generar-ia:disabled, .btn-generar-ia[disabled] { background: #9ca3af !important; cursor: not-allowed !important; }
-      /* === CHAT AGENT === */
-      .chat-messages {
-        height: 420px; overflow-y: auto; padding: 16px 8px;
-        display: flex; flex-direction: column; gap: 16px;
-        scroll-behavior: smooth;
-      }
-      .chat-welcome {
-        text-align: center; color: #64748b; font-size: 1rem; margin-bottom: 14px;
-      }
-      .chat-chips { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
-      .chip-btn {
-        background: #f0f4f8; border: 1.5px solid #e2e8f0; border-radius: 20px;
-        padding: 7px 16px; font-size: 0.88rem; color: #475569; cursor: pointer;
-        transition: all 0.15s; line-height: 1.4;
-      }
-      .chip-btn:hover { background: #e0e7ff; border-color: #818cf8; color: #3730a3; }
-      .chat-msg { display: flex; align-items: flex-end; gap: 8px; }
-      .chat-msg.user { flex-direction: row-reverse; }
-      .chat-avatar {
-        width: 30px; height: 30px; border-radius: 50%; flex-shrink: 0;
-        background: linear-gradient(135deg, #6610f2, #0d6efd);
-        display: flex; align-items: center; justify-content: center;
-        color: #fff; font-size: 0.78rem;
-      }
-      .chat-bubble {
-        max-width: 78%; padding: 10px 14px; line-height: 1.55;
-        font-size: 0.95rem; word-break: break-word;
-      }
-      .chat-msg.user .chat-bubble {
-        background: #0d6efd; color: #fff;
-        border-radius: 16px 16px 4px 16px;
-      }
-      .chat-msg.assistant .chat-bubble {
-        background: #f0f4f8; color: #1a2332;
-        border-radius: 16px 16px 16px 4px;
-      }
-      .chat-typing { display: flex; gap: 6px; align-items: center; padding: 14px 18px; }
-      .chat-typing span {
-        width: 9px; height: 9px; border-radius: 50%; background: #94a3b8;
-        animation: ia-dot-pulse 1.4s ease-in-out infinite;
-      }
-      .chat-typing span:nth-child(2) { animation-delay: 0.22s; }
-      .chat-typing span:nth-child(3) { animation-delay: 0.44s; }
-      @keyframes ia-dot-pulse {
-        0%, 100% { opacity: 0.25; transform: scale(0.7); }
-        50%       { opacity: 1;   transform: scale(1);   }
-      }
-      .chat-sql-toggle { font-size: 0.75rem; color: #94a3b8; cursor: pointer; margin-top: 4px; user-select: none; }
-      .chat-sql-toggle:hover { color: #64748b; }
-      .chat-sql-code {
-        font-size: 0.75rem; font-family: monospace; background: #f8f9fa;
-        border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px 10px;
-        margin-top: 4px; white-space: pre-wrap; word-break: break-all; color: #475569;
-      }
-      .chat-input-area {
-        display: flex; gap: 8px; padding: 12px 8px 0 8px;
-        border-top: 1px solid #e2e8f0; align-items: center;
-      }
-      .chat-input-area .form-group { margin: 0; flex: 1; }
-      .chat-input-area .form-control { border-radius: 22px !important; padding: 9px 16px !important; font-size: 0.95rem !important; }
-      .chat-send-btn {
-        width: 38px; height: 38px; border-radius: 50%; padding: 0;
-        display: flex; align-items: center; justify-content: center;
-        background: #0d6efd; border: none; color: #fff; flex-shrink: 0;
-        cursor: pointer; transition: background 0.15s;
-      }
-      .chat-send-btn:hover { background: #0b5ed7; }
-      .chat-send-btn:disabled { background: #cbd5e1; cursor: not-allowed; }
       /* === MÁS INFORMACIÓN (non-Win95) === */
       .insights-tab { width: 100%; max-width: 100%; padding: 0; font-size: 1.4rem; line-height: 1.6; color: #2d3748; }
       .insights-tab h4 { font-size: 1.75rem; font-weight: 600; color: #1a1a2e; margin-bottom: 1rem; letter-spacing: -0.02em; }
@@ -888,10 +803,9 @@ fluidPage(
           height: 400px !important;
         }
 
-        /* Modal Agente de datos (size='l', ~900px) y su lista de mensajes
-           a alto fijo — sin tratamiento de mobile por defecto en Bootstrap 3. */
+        /* Modales de size='l' (~900px) sin tratamiento de mobile por defecto
+           en Bootstrap 3. */
         .modal-dialog { max-width: calc(100vw - 24px) !important; margin: 12px auto !important; }
-        .chat-messages { height: auto !important; max-height: 60dvh !important; }
       }
 
       /* Objetivos tactiles: por tipo de dispositivo, no por ancho — mismo
@@ -981,11 +895,6 @@ fluidPage(
           actionButton("preset_7",  i18n_tr("sidebar.preset_7days", lang),  class = "btn-sm"),
           actionButton("preset_30", i18n_tr("sidebar.preset_month", lang),     class = "btn-sm"),
           actionButton("preset_365", i18n_tr("sidebar.preset_year", lang), class = "btn-sm")
-        ),
-        div(style = "margin-top: 14px; padding-top: 12px; border-top: 1px solid #dee2e6;",
-          actionButton("btn_abrir_ia",
-                       label = tagList(icon("robot"), i18n_tr("sidebar.ai_agent_btn", lang)),
-                       class = "btn-ia-sidebar")
         ),
         conditionalPanel(
           condition = "!(input.tabs === 'medios' && input.tabs_medios === 'volumen_datos')",
@@ -2482,266 +2391,11 @@ server <- function(input, output, session) {
     t
   }, striped = TRUE, hover = TRUE, sanitize.text.function = function(x) x)
 
-  # ── Chat agent ──────────────────────────────────────────────────────────────
-  chat_historial  <- reactiveVal(list())   # list of list(role, content, sql)
-  chat_procesando <- reactiveVal(FALSE)
-
   # Placeholder to avoid breaking any leftover references
   resumen_texto    <- reactiveVal(NULL)
   resumen_generando <- reactiveVal(FALSE)
 
-
   output$resumen_estado <- renderUI({ NULL })
-
-  # ── Modal: Agente de datos ───────────────────────────────────────────────────
-  observeEvent(input$btn_abrir_ia, {
-    chat_historial(list())
-    chat_procesando(FALSE)
-    f <- fechas()
-    fecha_i <- format(as.Date(f$start), "%d %b %Y")
-    fecha_f <- format(as.Date(f$end), "%d %b %Y")
-    showModal(modalDialog(
-      title = div(
-        style = "display: flex; align-items: center; gap: 10px;",
-        div(style = "width: 34px; height: 34px; background: linear-gradient(135deg,#6610f2,#0d6efd); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #fff; flex-shrink: 0; font-size: 0.95rem;",
-          icon("robot")
-        ),
-        div(
-          tags$strong(tr("chat.title"), style = "display: block; line-height: 1.2;"),
-          tags$span(paste(fecha_i, "\u2013", fecha_f),
-                    style = "font-size: 0.8rem; color: #6c757d; font-weight: 400;")
-        )
-      ),
-      div(
-        uiOutput("chat_mensajes_ui"),
-        div(class = "chat-input-area",
-          textInput("chat_pregunta", NULL,
-                    placeholder = tr("chat.input_placeholder")),
-          tags$button(
-            id = "btn_chat_enviar", class = "btn chat-send-btn action-button",
-            icon("paper-plane")
-          )
-        ),
-        # Submit on Enter
-        tags$script(HTML("
-          $(document).on('keydown', '#chat_pregunta', function(e) {
-            if (e.key === 'Enter' && !e.shiftKey) {
-              e.preventDefault();
-              $('#btn_chat_enviar').click();
-            }
-          });
-        "))
-      ),
-      footer = modalButton(tr("chat.close")),
-      size = "l",
-      easyClose = TRUE
-    ))
-  })
-
-  # ── Chip de sugerencia seleccionado ─────────────────────────────────────────
-  observeEvent(input$chat_chip, {
-    updateTextInput(session, "chat_pregunta", value = input$chat_chip)
-  })
-
-  # ── Enviar pregunta al agente ────────────────────────────────────────────────
-  observeEvent(input$btn_chat_enviar, {
-    pregunta <- trimws(if (is.null(input$chat_pregunta)) "" else input$chat_pregunta)
-    if (!nzchar(pregunta) || chat_procesando()) return()
-
-    hist <- chat_historial()
-    hist <- c(hist, list(list(role = "user", content = pregunta, sql = NULL)))
-    chat_historial(hist)
-    chat_procesando(TRUE)
-    updateTextInput(session, "chat_pregunta", value = "")
-
-    f <- fechas()
-    fecha_inicio <- f$start
-    fecha_fin    <- f$end
-    # Capturar historial e idioma ANTES de onFlushed (fuera del contexto reactivo se pierden)
-    hist_snapshot <- chat_historial()
-    chat_lang <- current_lang()
-
-    session$onFlushed(once = TRUE, function() {
-
-      # ── Paso 1: Generar SQL ───────────────────────────────────────────────────
-      schema_sys <- paste0(
-        "Eres un agente SQL para un dashboard de noticias de prensa chilena.\n",
-        "Per\u00edodo activo del dashboard: ", fecha_inicio, " al ", fecha_fin, ".\n\n",
-        "TABLAS DISPONIBLES (PostgreSQL):\n",
-        "  noticias(id TEXT, titulo TEXT, fuente TEXT, fecha DATE, url TEXT)  -- ~853,000 art\u00edculos\n",
-        "  titulos_terminos_diarios(fecha DATE, termino TEXT, frecuencia INTEGER)  -- frecuencia diaria de t\u00e9rminos en titulares\n",
-        "  titulos_terminos_por_medio(fecha DATE, fuente TEXT, termino TEXT, frecuencia INTEGER)\n",
-        "  mv_terminos_mensuales(fecha DATE, termino TEXT, frecuencia INTEGER)  -- agregado mensual\n",
-        "  mv_terminos_por_medio_mensuales(fecha DATE, fuente TEXT, termino TEXT, frecuencia INTEGER)\n\n",
-        "REGLAS:\n",
-        "  1. Escribe UNA sola consulta SELECT. Nada m\u00e1s.\n",
-        "  2. Usa el per\u00edodo del dashboard como filtro por defecto si el usuario no especifica fechas.\n",
-        "  3. Para buscar t\u00e9rminos usa: LOWER(termino) ILIKE '%palabra%'\n",
-        "  4. A\u00f1ade siempre LIMIT (m\u00e1x 30 para listas, 1 para totales).\n",
-        "  5. Responde SOLO con el SQL puro, sin explicaciones ni bloques markdown."
-      )
-
-      # Incluir último intercambio para soporte de preguntas de seguimiento
-      msgs_sql  <- list(list(role = "system", content = schema_sys))
-      user_msgs <- Filter(function(m) m$role == "user", hist_snapshot)
-      if (length(user_msgs) >= 2L) {
-        prev_q <- user_msgs[[length(user_msgs) - 1L]]$content
-        msgs_sql <- c(msgs_sql,
-          list(list(role = "user",      content = prev_q)),
-          list(list(role = "assistant", content = "[SQL generado]"))
-        )
-      }
-      msgs_sql <- c(msgs_sql, list(list(role = "user", content = pregunta)))
-
-      sql_raw <- tryCatch({
-        resp <- httr2::request("http://localhost:11434/api/chat") |>
-          httr2::req_body_json(list(
-            model    = "qwen2.5:3b",
-            stream   = FALSE,
-            messages = msgs_sql,
-            options  = list(temperature = 0.05, num_predict = 250L)
-          )) |>
-          httr2::req_timeout(60) |>
-          httr2::req_perform()
-        httr2::resp_body_json(resp)$message$content
-      }, error = function(e) NULL)
-
-      # Limpiar y validar SQL
-      sql_clean <- if (!is.null(sql_raw)) {
-        s <- gsub("```sql|```", "", sql_raw)
-        s <- trimws(s)
-        m <- regmatches(s, regexpr("(?i)SELECT[\\s\\S]+", s, perl = TRUE))
-        if (length(m) > 0L &&
-            !grepl("(?i)(DROP|DELETE|INSERT|UPDATE|ALTER|CREATE|TRUNCATE|GRANT|REVOKE)", m[1L])) {
-          sq <- m[1L]
-          if (!grepl("(?i)LIMIT", sq)) paste(sq, "LIMIT 30") else sq
-        } else NULL
-      } else NULL
-
-      # ── Paso 2: Ejecutar SQL ──────────────────────────────────────────────────
-      resultado_sql <- if (!is.null(sql_clean)) {
-        con <- poolCheckout(pool)
-        res <- tryCatch(
-          DBI::dbGetQuery(con, sql_clean),
-          error = function(e) list(error = conditionMessage(e))
-        )
-        poolReturn(con)
-        res
-      } else NULL
-
-      # ── Paso 3: Sintetizar respuesta ──────────────────────────────────────────
-      respuesta <- if (is.null(sql_clean) || is.null(resultado_sql)) {
-        i18n_tr("chat.error_no_query", chat_lang)
-      } else if (is.list(resultado_sql) && !is.data.frame(resultado_sql) && !is.null(resultado_sql$error)) {
-        paste0(i18n_tr("chat.error_db_prefix", chat_lang), resultado_sql$error)
-      } else if (is.data.frame(resultado_sql) && nrow(resultado_sql) == 0L) {
-        i18n_tr("chat.error_no_results", chat_lang)
-      } else {
-        data_txt <- paste(capture.output(print(resultado_sql, row.names = FALSE)), collapse = "\n")
-        synth_sys <- if (chat_lang == "en") paste(
-          "You are a Chilean press analyst. Answer the question in English,",
-          "directly and concisely (2-4 sentences). Base your answer exclusively",
-          "on the provided data. Mention concrete figures when available.",
-          "Do not explain the SQL or mention database tables."
-        ) else paste(
-          "Eres un analista de prensa chilena. Responde la pregunta en espa\u00f1ol,",
-          "de forma directa y concisa (2-4 oraciones). Basa la respuesta exclusivamente",
-          "en los datos proporcionados. Menciona cifras concretas cuando estén disponibles.",
-          "No expliques el SQL ni menciones tablas de base de datos."
-        )
-        tryCatch({
-          resp2 <- httr2::request("http://localhost:11434/api/chat") |>
-            httr2::req_body_json(list(
-              model    = "qwen2.5:3b",
-              stream   = FALSE,
-              messages = list(
-                list(role = "system", content = synth_sys),
-                list(role = "user",   content = paste0(
-                  "Pregunta: ", pregunta, "\n\nDatos:\n", data_txt
-                ))
-              ),
-              options  = list(temperature = 0.3, num_predict = 300L)
-            )) |>
-            httr2::req_timeout(60) |>
-            httr2::req_perform()
-          httr2::resp_body_json(resp2)$message$content
-        }, error = function(e) paste0(i18n_tr("chat.error_ollama_prefix", chat_lang), conditionMessage(e)))
-      }
-
-      hist2 <- isolate(chat_historial())
-      hist2 <- c(hist2, list(list(role = "assistant", content = respuesta, sql = sql_clean)))
-      chat_historial(hist2)
-      chat_procesando(FALSE)
-    })
-  })
-
-  # ── Renderizar el chat ───────────────────────────────────────────────────────
-  output$chat_mensajes_ui <- renderUI({
-    hist       <- chat_historial()
-    procesando <- chat_procesando()
-
-    # Estado inicial: chips de sugerencia
-    if (length(hist) == 0L && !procesando) {
-      sugerencias <- c(
-        tr("chat.suggestion.top_terms"),
-        tr("chat.suggestion.top_outlet"),
-        tr("chat.suggestion.total_count"),
-        tr("chat.suggestion.term_by_month")
-      )
-      return(div(class = "chat-messages", style = "justify-content: center;",
-        tags$p(class = "chat-welcome",
-               tr("chat.welcome")),
-        div(class = "chat-chips",
-          lapply(sugerencias, function(q) {
-            tags$button(class = "chip-btn",
-              onclick = paste0('Shiny.setInputValue("chat_chip","',
-                               gsub('"', '\\\\"', q, fixed = TRUE),
-                               '",{priority:"event"})'),
-              q)
-          })
-        )
-      ))
-    }
-
-    # Mensajes
-    bubbles <- lapply(hist, function(m) {
-      if (m$role == "user") {
-        div(class = "chat-msg user",
-          div(class = "chat-bubble", m$content)
-        )
-      } else {
-        div(class = "chat-msg assistant",
-          div(class = "chat-avatar", icon("robot")),
-          div(
-            div(class = "chat-bubble", m$content),
-            if (!is.null(m$sql) && nzchar(m$sql))
-              tags$details(
-                tags$summary(class = "chat-sql-toggle", tr("chat.view_sql")),
-                div(class = "chat-sql-code", m$sql)
-              )
-            else NULL
-          )
-        )
-      }
-    })
-
-    if (procesando) {
-      bubbles <- c(bubbles, list(
-        div(class = "chat-msg assistant",
-          div(class = "chat-avatar", icon("robot")),
-          div(class = "chat-bubble chat-typing",
-            tags$span(), tags$span(), tags$span()
-          )
-        )
-      ))
-    }
-
-    tagList(
-      div(class = "chat-messages", id = "chat-msgs-box", bubbles),
-      tags$script("(function(){ var b=document.getElementById('chat-msgs-box'); if(b) b.scrollTop=b.scrollHeight; })();")
-    )
-  })
-
   output$resumen_periodo_ui <- renderUI({ NULL })
 
   # ---- UI y gráfico pestaña Medios: panel de términos ----
