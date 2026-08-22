@@ -55,6 +55,8 @@ pg_user     <- Sys.getenv("PGUSER_NOTICIAS", Sys.getenv("PGUSER", "noticias"))
 pg_password <- Sys.getenv("PGPASSWORD_NOTICIAS", Sys.getenv("PGPASSWORD", ""))
 pg_db       <- Sys.getenv("PGDATABASE_NOTICIAS", Sys.getenv("PGDATABASE", "noticias_chile"))
 
+ollama_base_url <- Sys.getenv("OLLAMA_HOST", "http://localhost:11434")
+
 pool_global <- NULL
 
 get_pool <- function() {
@@ -2256,7 +2258,7 @@ server <- function(input, output, session) {
 
     if (store_disponible() && requireNamespace("proxy", quietly = TRUE)) {
       top_df <- tryCatch({
-        emb_fn <- ragnar::embed_ollama(model = "nomic-embed-text")
+        emb_fn <- ragnar::embed_ollama(base_url = ollama_base_url, model = "nomic-embed-text")
         emb_mat <- emb_fn(top$termino)
         sim_mat <- as.matrix(proxy::simil(emb_mat, method = "cosine"))
         dist_mat <- as.dist(1 - sim_mat)
@@ -2781,7 +2783,7 @@ server <- function(input, output, session) {
       )
     }
     if (store_disponible() && !is.null(input$umbral_semantico)) {
-      emb_fn <- tryCatch(ragnar::embed_ollama(model = "nomic-embed-text"), error = function(e) NULL)
+      emb_fn <- tryCatch(ragnar::embed_ollama(base_url = ollama_base_url, model = "nomic-embed-text"), error = function(e) NULL)
       if (!is.null(emb_fn)) {
         emb_matrix <- tryCatch(emb_fn(nodo_ids), error = function(e) NULL)
         if (!is.null(emb_matrix) && requireNamespace("proxy", quietly = TRUE)) {
