@@ -149,13 +149,6 @@ fluidPage(
       $(document).on('shown.bs.tab', function() {
         setTimeout(function() { $(window).trigger('resize'); }, 50);
       });
-      Shiny.addCustomMessageHandler('toggle_btn_ia', function(msg) {
-        var btn = document.getElementById('btn_generar_resumen');
-        if (!btn) return;
-        btn.disabled = msg.disabled;
-        btn.textContent = msg.label;
-      });
-
       /* Cambio de idioma: ui(request) NO es reactivo en Shiny -- se evalua UNA
          SOLA VEZ por conexion/pagina, asi que el titulo, el sidebar completo,
          los titulos/descripciones de cada grafico y todo lo demas armado
@@ -564,14 +557,6 @@ fluidPage(
       .shiny-output-container .table-hover tbody tr:hover td { background-color: #eff6ff; }
       /* === PAGINATION === */
       .shiny-output-container .btn-sm { font-size: 1.43rem; border-radius: 6px; }
-      /* === IA GENERATE BUTTON === */
-      .btn-generar-ia {
-        background: #0d6efd !important; border: none !important; color: #fff !important;
-        font-size: 1.5rem !important; padding: 10px 24px !important; border-radius: 7px !important;
-        font-weight: 600 !important; white-space: nowrap; transition: background 0.15s !important;
-      }
-      .btn-generar-ia:hover { background: #0b5ed7 !important; }
-      .btn-generar-ia:disabled, .btn-generar-ia[disabled] { background: #9ca3af !important; cursor: not-allowed !important; }
       /* === MÁS INFORMACIÓN (non-Win95) === */
       .insights-tab { width: 100%; max-width: 100%; padding: 0; font-size: 1.4rem; line-height: 1.6; color: #2d3748; }
       .insights-tab h4 { font-size: 1.75rem; font-weight: 600; color: #1a1a2e; margin-bottom: 1rem; letter-spacing: -0.02em; }
@@ -2391,13 +2376,6 @@ server <- function(input, output, session) {
     t
   }, striped = TRUE, hover = TRUE, sanitize.text.function = function(x) x)
 
-  # Placeholder to avoid breaking any leftover references
-  resumen_texto    <- reactiveVal(NULL)
-  resumen_generando <- reactiveVal(FALSE)
-
-  output$resumen_estado <- renderUI({ NULL })
-  output$resumen_periodo_ui <- renderUI({ NULL })
-
   # ---- UI y gráfico pestaña Medios: panel de términos ----
   output$selector_terminos_medios <- renderUI({
     disponibles <- terminos_medios_disponibles()
@@ -3687,7 +3665,6 @@ server <- function(input, output, session) {
   outputOptions(output, "grafico_evolucion_volumen_por_medio",  suspendWhenHidden = FALSE)
   outputOptions(output, "grafico_terminos_por_medio",           suspendWhenHidden = FALSE)
   outputOptions(output, "grafico_evolucion_terminos_por_medio", suspendWhenHidden = FALSE)
-  outputOptions(output, "resumen_periodo_ui",                   suspendWhenHidden = FALSE)
 }
 
 # ------------------------------------------------------------------------------
