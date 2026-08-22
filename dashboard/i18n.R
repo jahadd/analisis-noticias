@@ -288,26 +288,7 @@ i18n_strings <- list(
   "sidebar.preset_7days" = list(es = "Últimos 7 días", en = "Last 7 days"),
   "sidebar.preset_month" = list(es = "Último mes", en = "Last month"),
   "sidebar.preset_year" = list(es = "Último año", en = "Last year"),
-  "sidebar.ai_agent_btn" = list(es = " Agente de datos", en = " Data agent"),
   "sidebar.date_separator" = list(es = " a ", en = " to "),
-
-  # ── Modal "Agente de datos" (chat IA) ────────────────────────────────────
-  "chat.title" = list(es = "Agente de datos", en = "Data agent"),
-  "chat.input_placeholder" = list(es = "Pregunta algo sobre las noticias del período…", en = "Ask something about the headlines in this period…"),
-  "chat.close" = list(es = "Cerrar", en = "Close"),
-  "chat.welcome" = list(es = "Puedes preguntarme sobre las noticias del período seleccionado:", en = "You can ask me about the headlines in the selected period:"),
-  "chat.suggestion.top_terms" = list(es = "¿Cuáles son los términos más frecuentes del período?", en = "What are the most frequent terms in this period?"),
-  "chat.suggestion.top_outlet" = list(es = "¿Qué medio publicó más noticias?", en = "Which outlet published the most headlines?"),
-  "chat.suggestion.total_count" = list(es = "¿Cuántas noticias hay en total?", en = "How many headlines are there in total?"),
-  "chat.suggestion.term_by_month" = list(es = "¿Cuál fue el término más mencionado cada mes?", en = "What was the most mentioned term each month?"),
-  "chat.view_sql" = list(es = "Ver SQL generado", en = "View generated SQL"),
-  "chat.error_no_query" = list(
-    es = "No pude formular una consulta para esa pregunta. Intenta reformularla con más detalle.",
-    en = "I couldn't formulate a query for that question. Try rephrasing it with more detail."
-  ),
-  "chat.error_db_prefix" = list(es = "Error al consultar la base de datos: ", en = "Error querying the database: "),
-  "chat.error_no_results" = list(es = "La consulta no devuelve resultados para ese período o término.", en = "The query returns no results for that period or term."),
-  "chat.error_ollama_prefix" = list(es = "Error al conectar con Ollama: ", en = "Error connecting to Ollama: "),
 
   # ── Medios: sidebar de "Conceptos por medio" ─────────────────────────────
   "media.sidebar.terms_for_chart" = list(es = "Términos para el gráfico por medio", en = "Terms for the outlet chart")
