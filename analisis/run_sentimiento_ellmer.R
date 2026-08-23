@@ -68,7 +68,7 @@ invisible(dbExecute(con, "ALTER TABLE noticias_sentimiento ADD COLUMN IF NOT EXI
 # ------------------------------------------------------------------------------
 # Clasificador (ellmer)
 # ------------------------------------------------------------------------------
-chat <- chat_ollama(model = MODELO, system_prompt = SYSTEM_PROMPT, echo = "none")
+chat <- chat_ollama(base_url = OLLAMA_BASE, model = MODELO, system_prompt = SYSTEM_PROMPT, echo = "none")
 tipo <- type_object(
   sentimiento = type_enum(c("positivo", "neutral", "negativo")),
   confianza   = type_number("Qué tan seguro estás de la clasificación, de 0.0 (nada) a 1.0 (totalmente seguro)")
