@@ -46,6 +46,8 @@ for (env_file in env_candidates) {
 
 `%||%` <- function(x, y) if (nzchar(x)) x else y
 
+OLLAMA_BASE_URL <- Sys.getenv("OLLAMA_HOST", "http://localhost:11434")
+
 PGHOST     <- Sys.getenv("PGHOST", "localhost")
 PGPORT     <- as.integer(Sys.getenv("PGPORT", "5432"))
 PGUSER     <- Sys.getenv("PGUSER_NOTICIAS") %||% Sys.getenv("PGUSER", "noticias")
@@ -104,7 +106,7 @@ store <- if (file.exists(STORE_PATH)) {
 } else {
   ragnar_store_create(
     location = STORE_PATH,
-    embed    = embed_ollama(model = "nomic-embed-text"),
+    embed    = embed_ollama(base_url = OLLAMA_BASE_URL, model = "nomic-embed-text"),
     version  = 1
   )
 }
