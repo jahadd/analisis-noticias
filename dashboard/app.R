@@ -1853,9 +1853,14 @@ server <- function(input, output, session) {
   output$mas_informacion_contenido <- renderUI({
     # Total de noticias calculado de la BD (redondeado hacia abajo a 0.1M) para que la
     # cifra mostrada nunca quede obsoleta; fallback estático si la consulta falla.
+    # Acotado a FECHA_DESDE_DASHBOARD: la tabla noticias tiene scraping crudo de
+    # Bastián Olea desde antes de eso, pero el análisis del dashboard (y el resto
+    # de sus textos) solo cubre desde ahí -- mostrar el mínimo real de la tabla
+    # (2007) contradeciría al resto de la pestaña.
     corpus_txt <- tryCatch({
       r <- DBI::dbGetQuery(get_pool(),
-        "SELECT COUNT(*)::float8 AS n, EXTRACT(YEAR FROM MIN(fecha))::int AS y FROM noticias")
+        "SELECT COUNT(*)::float8 AS n, EXTRACT(YEAR FROM MIN(fecha))::int AS y FROM noticias WHERE fecha >= $1",
+        params = list(FECHA_DESDE_DASHBOARD))
       sprintf(tr("info.corpus.text"), format(floor(r$n / 1e5) / 10, decimal.mark = ","), r$y)
     }, error = function(e) tr("info.corpus.fallback"))
     repo_prensa   <- "https://github.com/bastianolea/prensa_chile"
