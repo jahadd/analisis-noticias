@@ -133,16 +133,24 @@ fluidPage(
       // En celular, #sidebar-tab-filtros (selector de terminos/medio/sliders
       // de la pestaña activa) se reubica para quedar entre las pestañas y su
       // contenido, en vez de al final de todo junto con el resto del sidebar.
-      // Mueve el nodo real (no lo clona) — el id sigue existiendo una sola
-      // vez en la pagina, asi que no rompe el binding de Shiny. Selector con
-      // hijos directos (.col-sm-9 > .tabbable > .tab-content) para alcanzar
-      // solo el tabsetPanel principal, no el anidado 'tabs_medios'.
+      // #sidebar-filtros-globales (rango de fechas + exclusion de palabras,
+      // compartido por todas las pestañas) se reubica igual, justo encima de
+      // #sidebar-tab-filtros -- si no, quedaba mas abajo que este ultimo,
+      // enterrado al final del sidebar completo. Mueve los nodos reales (no
+      // los clona) — el id sigue existiendo una sola vez en la pagina, asi
+      // que no rompe el binding de Shiny. Selector con hijos directos
+      // (.col-sm-9 > .tabbable > .tab-content) para alcanzar solo el
+      // tabsetPanel principal, no el anidado 'tabs_medios'.
       function reubicarFiltrosMobile() {
         if (window.innerWidth > 767) return;
+        var $filtrosGlobales = $('#sidebar-filtros-globales');
         var $filtros = $('#sidebar-tab-filtros');
         var $tabContent = $('#main-layout-wrapper > .row > .col-sm-9 > .tabbable > .tab-content');
         if ($filtros.length && $tabContent.length) {
           $filtros.insertBefore($tabContent);
+        }
+        if ($filtrosGlobales.length && $filtros.length) {
+          $filtrosGlobales.insertBefore($filtros);
         }
       }
       $(document).on('shiny:connected', function() { setTimeout(syncTabClass, 200); setTimeout(reubicarFiltrosMobile, 200); });
@@ -254,21 +262,11 @@ fluidPage(
         font-weight: 400;
         letter-spacing: 0.01em;
       }
-      .btn-volver-escritorio { display: none; }
-      /* Botón Escritorio anclado a la esquina superior derecha, fuera del flujo
-         del título. El padding-right se reserva SIEMPRE (también en modo iframe):
-         la página wrapper /analisis-noticias-chile superpone su propio botón fijo
-         en esa esquina y el título no debe quedar debajo. */
+      /* El botón de volver al escritorio lo pone únicamente la página wrapper
+         /analisis-noticias-chile (fijo, superpuesto sobre el iframe). Este
+         título igual reserva el padding-right SIEMPRE (también en modo
+         iframe) para no quedar debajo de ese botón externo. */
       .titulo-row { position: relative; padding-right: 150px; }
-      .standalone .btn-volver-escritorio {
-        display: inline-flex; align-items: center; gap: 6px;
-        position: absolute; top: 0; right: 0;
-        background: #0f172a; color: #fff !important; border-radius: 7px;
-        padding: 7px 14px; font-size: 1.38rem; font-weight: 600;
-        text-decoration: none !important; letter-spacing: 0.03em;
-        white-space: nowrap; transition: background 0.15s;
-      }
-      .btn-volver-escritorio:hover { background: #0d6efd; color: #fff !important; text-decoration: none !important; }
       /* Selector de idioma: solo tiene sentido en la pestaña standalone (el
          idioma embebido lo define la configuración de la página padre y ya
          llega sincronizado vía cookie/postMessage). */
@@ -723,11 +721,12 @@ fluidPage(
         #main-layout-wrapper > .row > .col-sm-3 { order: 2; }
 
         /* #sidebar-tab-filtros (selector de términos / medio / sliders de
-           la pestaña activa) lo reubica el JS de mas abajo para que quede
-           entre las pestañas y el contenido, en vez de al final de todo
-           junto con el resto del sidebar. Estilo propio porque deja de
-           estar dentro de la columna gris del sidebar. */
-        #sidebar-tab-filtros {
+           la pestaña activa) y #sidebar-filtros-globales (fechas + exclusion
+           de palabras) los reubica el JS de mas abajo para que queden entre
+           las pestañas y el contenido, en vez de al final de todo junto con
+           el resto del sidebar. Estilo propio porque dejan de estar dentro
+           de la columna gris del sidebar. */
+        #sidebar-tab-filtros, #sidebar-filtros-globales {
           background: #fff; border: 1px solid #e8edf3; border-radius: 10px;
           padding: 1rem 1.1rem; margin: 0.9rem 0;
           box-shadow: 0 2px 14px rgba(15,23,42,0.05);
@@ -794,14 +793,15 @@ fluidPage(
            en Bootstrap 3. */
         .modal-dialog { max-width: calc(100vw - 24px) !important; margin: 12px auto !important; }
 
-        /* Encabezado: en escritorio el h1 y el botón/selector de idioma (modo
+        /* Encabezado: en escritorio el h1 y el selector de idioma (modo
            standalone) conviven en una sola fila porque sobra ancho. En mobile
-           los 150px reservados a la derecha (línea ~262, para que el h1 no
-           quede debajo del botón de volver al escritorio) se comen casi la
-           mitad del ancho disponible — el título queda apretado en una
-           columna angosta a la izquierda, envuelve en muchas líneas, y esos
-           150px quedan en blanco porque nada los ocupa. Se apilan verticalmente
-           en vez de compartir la fila, así el h1 recupera el ancho completo. */
+           los 150px reservados a la derecha (línea ~261, para que el h1 no
+           quede debajo del botón de volver al escritorio que superpone la
+           página wrapper) se comen casi la mitad del ancho disponible — el
+           título queda apretado en una columna angosta a la izquierda,
+           envuelve en muchas líneas, y esos 150px quedan en blanco porque
+           nada los ocupa. Se apilan verticalmente en vez de compartir la
+           fila, así el h1 recupera el ancho completo. */
         .titulo-row {
           flex-direction: column;
           align-items: flex-start;
@@ -809,13 +809,6 @@ fluidPage(
         }
         .dashboard-title { font-size: 2rem !important; line-height: 1.2 !important; }
         .dashboard-subtitle { font-size: 1.1rem !important; }
-        /* .btn-volver-escritorio es position:absolute (top:0;right:0) para
-           sentarse junto al h1 en la fila de escritorio; en la columna mobile
-           debe volver al flujo normal para quedar debajo del título. */
-        .standalone .btn-volver-escritorio {
-          position: static !important;
-          margin-top: 8px;
-        }
       }
 
       /* Objetivos tactiles: por tipo de dispositivo, no por ancho — mismo
@@ -874,8 +867,6 @@ fluidPage(
   div(style = "padding: 1rem 1rem 0;"),
   div(class = "titulo-row",
     h1(class = "dashboard-title", `data-i18n` = "page.title", i18n_tr("page.title", lang)),
-    tags$a(href = "/", class = "btn-volver-escritorio",
-      HTML(paste0("\u229e <span data-i18n=\"nav.desktop_link\">", i18n_tr("nav.desktop_link", lang), "</span>"))),
     div(class = "news-language-switcher", role = "group", `aria-label` = i18n_tr("language.label", lang),
       tags$button(type = "button", class = paste("lang-btn", if (lang == "es") "active" else ""), `data-babel-lang` = "es", "ES"),
       tags$button(type = "button", class = paste("lang-btn", if (lang == "en") "active" else ""), `data-babel-lang` = "en", "EN")
@@ -888,12 +879,12 @@ fluidPage(
         width = 3,
         conditionalPanel(
           condition = "input.tabs !== 'mas_info'",
-          div(class = "sidebar-seccion",
+          div(id = "sidebar-filtros-globales", class = "sidebar-seccion",
         tags$label(class = "control-label", `data-i18n` = "sidebar.date_range", i18n_tr("sidebar.date_range", lang)),
         dateRangeInput(
           "fechas",
           label = NULL,
-          start = max(Sys.Date() - 90, as.Date("2018-01-01")),
+          start = max(Sys.Date() - 365, as.Date("2018-01-01")),
           end = Sys.Date(),
           min = as.Date("2018-01-01"),
           max = Sys.Date(),
