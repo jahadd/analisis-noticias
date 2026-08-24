@@ -793,6 +793,29 @@ fluidPage(
         /* Modales de size='l' (~900px) sin tratamiento de mobile por defecto
            en Bootstrap 3. */
         .modal-dialog { max-width: calc(100vw - 24px) !important; margin: 12px auto !important; }
+
+        /* Encabezado: en escritorio el h1 y el botón/selector de idioma (modo
+           standalone) conviven en una sola fila porque sobra ancho. En mobile
+           los 150px reservados a la derecha (línea ~262, para que el h1 no
+           quede debajo del botón de volver al escritorio) se comen casi la
+           mitad del ancho disponible — el título queda apretado en una
+           columna angosta a la izquierda, envuelve en muchas líneas, y esos
+           150px quedan en blanco porque nada los ocupa. Se apilan verticalmente
+           en vez de compartir la fila, así el h1 recupera el ancho completo. */
+        .titulo-row {
+          flex-direction: column;
+          align-items: flex-start;
+          padding-right: 0 !important;
+        }
+        .dashboard-title { font-size: 2rem !important; line-height: 1.2 !important; }
+        .dashboard-subtitle { font-size: 1.1rem !important; }
+        /* .btn-volver-escritorio es position:absolute (top:0;right:0) para
+           sentarse junto al h1 en la fila de escritorio; en la columna mobile
+           debe volver al flujo normal para quedar debajo del título. */
+        .standalone .btn-volver-escritorio {
+          position: static !important;
+          margin-top: 8px;
+        }
       }
 
       /* Objetivos tactiles: por tipo de dispositivo, no por ancho — mismo
