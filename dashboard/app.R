@@ -1144,6 +1144,54 @@ server <- function(input, output, session) {
 
   pool <- get_pool()
 
+  # ---- Instrumentación de interacciones (pestaña Admin del sitio Flask) ----
+  # Un INSERT liviano por evento en `noticias_interacciones`
+  # (migrations/noticias/0003_interacciones.sql) -- nunca debe poder romper
+  # el dashboard si la BD tiene un hipo, mismo estilo tryCatch que ya usa
+  # get_pool() arriba. Los sliders y el buscador de texto van con debounce()
+  # (no existía antes en este archivo, pero shiny ya está cargado) para no
+  # escribir una fila por cada pixel arrastrado o cada tecla.
+  log_interaccion <- function(tipo, valor) {
+    tryCatch(
+      dbExecute(pool, "INSERT INTO noticias_interacciones (tipo, valor) VALUES ($1, $2)",
+                params = list(tipo, as.character(valor))),
+      error = function(e) message("[interacciones] ", tipo, ": ", e$message)
+    )
+  }
+
+  observeEvent(input$tabs, log_interaccion("cambio_pestana", input$tabs), ignoreInit = TRUE)
+  observeEvent(input$tabs_medios, log_interaccion("cambio_subpestana_medios", input$tabs_medios), ignoreInit = TRUE)
+
+  busqueda_titulo_debounced <- debounce(reactive(input$busqueda_titulo), millis = 1500)
+  observeEvent(busqueda_titulo_debounced(), {
+    v <- trimws(busqueda_titulo_debounced())
+    if (nzchar(v)) log_interaccion("busqueda_titulo", v)
+  }, ignoreInit = TRUE)
+
+  observeEvent(input$filtro_medio_noticias, {
+    if (!identical(input$filtro_medio_noticias, "todos")) log_interaccion("filtro_medio_tendencias", input$filtro_medio_noticias)
+  }, ignoreInit = TRUE)
+  observeEvent(input$medio_terminos_seleccionado, log_interaccion("filtro_medio_medios", input$medio_terminos_seleccionado), ignoreInit = TRUE)
+  observeEvent(input$sent_filtro_medio, {
+    if (!identical(input$sent_filtro_medio, "todos")) log_interaccion("filtro_medio_sentimiento", input$sent_filtro_medio)
+  }, ignoreInit = TRUE)
+  observeEvent(input$sent_bar_click, {
+    if (!identical(input$sent_bar_click, "__clear__")) log_interaccion("click_sentimiento", input$sent_bar_click)
+  }, ignoreInit = TRUE)
+
+  observeEvent(input$medio_evolucion_concepto, log_interaccion("red_palabras_medio", input$medio_evolucion_concepto), ignoreInit = TRUE)
+  observeEvent(input$fuente_red, log_interaccion("red_palabras_fuente", input$fuente_red), ignoreInit = TRUE)
+
+  umbral_coocurrencia_debounced <- debounce(reactive(input$umbral_coocurrencia), millis = 800)
+  observeEvent(umbral_coocurrencia_debounced(), log_interaccion("red_palabras_umbral_coocurrencia", umbral_coocurrencia_debounced()), ignoreInit = TRUE)
+  max_nodos_red_debounced <- debounce(reactive(input$max_nodos_red), millis = 800)
+  observeEvent(max_nodos_red_debounced(), log_interaccion("red_palabras_max_nodos", max_nodos_red_debounced()), ignoreInit = TRUE)
+  umbral_semantico_debounced <- debounce(reactive(input$umbral_semantico), millis = 800)
+  observeEvent(umbral_semantico_debounced(), log_interaccion("red_palabras_umbral_semantico", umbral_semantico_debounced()), ignoreInit = TRUE)
+
+  observeEvent(input$termo_añadir_evol, log_interaccion("termino_agregado_evolucion", input$termo_añadir_evol), ignoreInit = TRUE)
+  observeEvent(input$termo_añadir_medios, log_interaccion("termino_agregado_medios", input$termo_añadir_medios), ignoreInit = TRUE)
+
   rag_store <- tryCatch({
     if (requireNamespace("ragnar", quietly = TRUE) && file.exists("../datos/noticias_rag.duckdb")) {
       ragnar::ragnar_store_connect(
