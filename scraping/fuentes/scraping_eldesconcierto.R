@@ -84,7 +84,7 @@ resultados_enlaces <- map(enlaces, \(enlace) {
   
   },
   error = function(e) {
-    message("Error en scraping eldesconcierto: ", e)
+    message(glue("Error en scraping eldesconcierto (listado {enlace}): {conditionMessage(e)}"))
     return(NULL)}
   )
 })
@@ -150,7 +150,10 @@ resultados_eldesconcierto <- map_df(enlaces_eldesconcierto, \(enlace) {
     
   },
   error = function(error) {
-    warning(glue("error en eldesconcierto: error en respuesta"))
+    # K20 (2026-09-03): antes se perdía el mensaje real (string fijo "error en
+    # respuesta"), lo que impedía distinguir timeout/bloqueo/HTML vacío en el
+    # log. Se usa conditionMessage(error) para ver la causa real.
+    warning(glue("error en eldesconcierto ({enlace}): {conditionMessage(error)}"))
     return(NULL)
   }
   )
