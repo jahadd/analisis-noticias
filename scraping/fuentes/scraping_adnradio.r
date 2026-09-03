@@ -35,10 +35,16 @@ resultados_links <- map_df(categorias, \(enlace_categoria) {
     final <- Sys.time()
     Sys.sleep((final-inicio)*3) # espera
     
+    # K20 (auditor-datos, 2026-09-03): adnradio.cl rediseñó las páginas de
+    # listado -- los títulos de artículo ahora están envueltos así:
+    # <article><header><a href="..."><h2>título</h2></a></header></article>
+    # (el <a> envuelve al <h2>, no al revés como con el <h3> viejo). Se
+    # busca el <a> que contiene un <h2> vía xpath (confirmado con HTML
+    # crudo, sin necesidad de Chromote: 22/22 enlaces del listado son
+    # artículos, cero falsos positivos).
     enlaces <- sitio |>
-      html_elements("h3") |> 
-      html_elements("a") |> 
-      html_attr("href") |> 
+      html_elements(xpath = "//article//a[h2]") |>
+      html_attr("href") |>
       unique()
     
     noticias_links <- tibble("enlace" = paste0("https://www.adnradio.cl", enlaces),
@@ -76,16 +82,23 @@ resultados_adnradio <- map(unique(resultados_links$enlace), \(enlace) {
     )
     if (is.null(noticia)) return(NULL)
 
+    # K20 (2026-09-03): el header del artículo cambió de clase/estructura
+    # ("header.art-header", con el título en <h1> y la bajada en un <p>
+    # suelto, ya no en <h2>). Antes se buscaba en CUALQUIER <header> del
+    # documento -- funcionaba para el título porque el header del sitio no
+    # tiene <h1>, pero para la bajada capturaba el <p> equivocado del menú
+    # ("Selecciona tu emisora"), ya que ese header sí tiene <p>. Se acota al
+    # header del artículo con la clase específica.
     noticia_titulo <- noticia |>
-      html_elements("header") |>
+      html_elements("header.art-header") |>
       html_elements("h1") |>
       html_text() |>
       purrr::pluck(1)
-    
+
     noticia_bajada <- noticia |>
-      html_elements("header") |> 
-      html_elements("h2") |>
-      html_text() |> 
+      html_elements("header.art-header") |>
+      html_elements("p") |>
+      html_text() |>
       purrr::pluck(1)
     
     # noticia_fecha <- noticia |> 
