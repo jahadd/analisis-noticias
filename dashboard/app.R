@@ -762,6 +762,18 @@ fluidPage(
           white-space: nowrap;
         }
 
+        /* #tabs_medios (las 4 sub-pestañas de Medios) no entra en una sola
+           fila ni en telefonos de ancho estandar (~390px): Red de palabras
+           quedaba casi entera fuera del area visible del scroll horizontal
+           de arriba, sin ninguna pista (flecha, degradé) de que hubiera más
+           pestañas -- la opción no era descubrible. A diferencia de la barra
+           superior (#tabs, que sí entra completa en una fila), esta anidada
+           se deja envolver en 2 filas en vez de heredar el scroll silencioso. */
+        #tabs_medios {
+          flex-wrap: wrap !important;
+          overflow-x: visible;
+        }
+
         .preset-buttons { grid-template-columns: 1fr 1fr; }
         .preset-buttons .btn { font-size: 1.1rem; }
 
@@ -3734,6 +3746,12 @@ server <- function(input, output, session) {
   outputOptions(output, "grafico_evolucion_volumen_por_medio",  suspendWhenHidden = FALSE)
   outputOptions(output, "grafico_terminos_por_medio",           suspendWhenHidden = FALSE)
   outputOptions(output, "grafico_evolucion_terminos_por_medio", suspendWhenHidden = FALSE)
+  # Sin esto, red_coocurrencia_plotly (el más pesado: CTE sobre ~20M filas +
+  # layout de igraph en el servidor) recién empieza a calcularse cuando el
+  # usuario entra a la sub-pestaña "Red de palabras" -- en conexiones lentas
+  # esa carrera entre "el widget recién se inicializa" y "el usuario ya está
+  # mirando la pestaña" es lo que hacía parecer que el gráfico no aparecía.
+  outputOptions(output, "red_coocurrencia_plotly", suspendWhenHidden = FALSE)
 }
 
 # ------------------------------------------------------------------------------
